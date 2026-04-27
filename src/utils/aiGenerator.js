@@ -5,8 +5,9 @@
  */
 
 import { postToOpenRouterProxy } from './openrouterProxy';
+import { OUTSIDE_EXAMPLE, INSIDE_EXAMPLE } from './exampleImages';
 
-const TARGET_MODEL = "google/gemini-3.1-flash-image-preview";
+const TARGET_MODEL = "sourceful/riverflow-v2-fast";
 const MAX_DIM = 1024;
 
 const normalizeScreenColor = (value) => {
@@ -209,12 +210,22 @@ ZERO GAP ENFORCEMENT:
 
 ${viewRules}
 
+REFERENCE EXAMPLE IMAGE:
+You will receive TWO images in this message:
+- IMAGE #1 (the photo to enhance): Contains the placement reference with the screen already baked in. This is the ONLY image you should modify.
+- IMAGE #2 (style reference): Shows a completed, professionally installed screen for visual quality guidance. Do NOT copy its layout, dimensions, architecture, or surroundings. Use it ONLY as a target for:
+  - Screen fabric/mesh texture realism and weave density.
+  - Frame bar proportions (top cassette thickness, side track width, bottom rail height).
+  - Shadow subtlety and lighting integration around the frame.
+  - Overall photorealism of a real installed retractable patio screen.
+- IMPORTANT: Match the screen COLOR to "${color}" as requested above, NOT the color shown in the reference example. The reference is for quality/style only.
+
 ALLOWED IMPROVEMENTS ONLY:
 - Blend screen into existing lighting.
-- Add realistic woven fabric texture.
-- Add subtle shadow under frame bars.
+- Add realistic woven fabric texture matching the reference example's quality.
+- Add subtle shadow under frame bars like the reference example.
 - Enhance metal material realism.
-- Make the screen look professionally installed.
+- Make the screen look as professionally installed as the reference example.
 
 Return only the enhanced photograph.`;
 };
@@ -260,9 +271,11 @@ export const enhanceScreenImage = async (
 ) => {
     try {
         const prompt = buildEnhancementPrompt({ viewType, screenColor, corners });
+        const exampleDataUrl = viewType === 'inside' ? INSIDE_EXAMPLE : OUTSIDE_EXAMPLE;
         const content = [
             { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: compositeUrl } }
+            { type: "image_url", image_url: { url: compositeUrl } },
+            { type: "image_url", image_url: { url: exampleDataUrl } }
         ];
 
         const data = await postToOpenRouterProxy({
