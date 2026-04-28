@@ -176,24 +176,34 @@ const buildEnhancementPrompt = ({ viewType, screenColor, corners }) => {
 - The fabric looks like a dense WOVEN PRIVACY SCREEN with a realistic crosshatch weave pattern.
 - The fabric is NOT see-through in any way. Zero visibility through it.`;
 
-    return `Create an image: This photograph already contains a motorized retractable patio screen installed in the selected opening. The visible screen in the provided image is a LOCKED PLACEMENT REFERENCE. Your job is ONLY to make that existing screen look more photorealistic.
+    return `Create an image: This photograph contains a placement guide showing where a motorized retractable patio screen should be installed. The baked overlay in the image shows the GENERAL AREA of the opening. The polygon shape may be irregular because the user traced around obstacles (posts, pillars, furniture, plants). Your job is to render a realistic, properly installed rectangular screen in that area.
 
-LOCKED SCREEN QUADRILATERAL IN IMAGE PERCENT COORDINATES:
+SCREEN AREA IN IMAGE PERCENT COORDINATES (approximate guide):
 ${coordinateList}
 
-The final screen must occupy exactly this four-corner quadrilateral: TL to TR to BR to BL. Any screen, frame, mesh, shadow, or rail outside this quadrilateral is a failed output. Do not create a second screen anywhere else.
+These coordinates indicate WHERE the screen should appear. The actual screen must be a proper rectangular panel.
 
-ABSOLUTE RULES — THE SCREEN IS ALREADY PLACED:
-- Do NOT move the screen.
-- Do NOT resize the screen.
-- Do NOT change the shape or boundaries of the screen.
+RECTANGULAR SCREEN ENFORCEMENT:
+- The screen MUST be a proper rectangular panel — exactly like a real motorized retractable screen.
+- Top cassette: straight horizontal bar, LEVEL from left to right.
+- Bottom rail: straight horizontal bar, LEVEL from left to right.
+- Side tracks: straight vertical bars, PLUMB from top to bottom.
+- Even if the baked reference shows a diagonal or irregular shape, the FINAL screen must be rectangular with straight, level, plumb frame bars.
+- Do NOT create a diagonal shade, parallelogram screen, or slanted bottom rail.
+- The screen should fill the architectural opening naturally from edge to edge.
+
+OBSTACLE HANDLING:
+- If obstacles (posts, pillars, furniture, plants, railings, columns) are visible within or overlapping the selected area, the screen must appear BEHIND them naturally — exactly as a real installed screen would.
+- Do NOT erase, cover, or alter any obstacles. They must remain fully visible in front of the screen.
+- The screen fabric/mesh is visible in the areas NOT blocked by obstacles.
+- Do NOT reshape the screen to dodge obstacles. Keep the screen rectangular and let obstacles sit in front.
+
+ABSOLUTE RULES:
 - Do NOT relocate the screen to a different opening.
-- Do NOT expand the screen to the larger patio bay.
-- Do NOT cover the entire patio structure unless the selected TL/TR/BR/BL coordinates cover the entire patio structure.
+- Do NOT expand the screen beyond the architectural opening.
 - Do NOT remove the screen.
-- Do NOT redesign the placement reference. Treat its boundaries as fixed.
 - Do NOT modify walls, posts, doors, windows, floor, ceiling, furniture, or plants outside the screen area.
-- Do NOT create a roll-down animation frame, partially lowered shade, diagonal shade, or slanted bottom rail.
+- Do NOT create a roll-down animation frame, partially lowered shade, or triangular shade.
 
 FRAME BARS MUST REMAIN VISIBLE AND ENHANCED:
 - TOP CASSETTE: a thick horizontal bar at the top edge of the opening.
@@ -201,7 +211,7 @@ FRAME BARS MUST REMAIN VISIBLE AND ENHANCED:
 - BOTTOM RAIL: a medium-thickness horizontal bar at the bottom edge.
 - ALL bars are ${color} powder-coated metal.
 - Do NOT let the frame bars disappear, fade, or become thin/small. Keep them prominent.
-- The bottom rail must connect BL directly to BR. It must not angle across the patio or form a partially lowered triangular shade.
+- The bottom rail must be straight and horizontal, connecting the bottom-left to bottom-right corners.
 
 ZERO GAP ENFORCEMENT:
 - The outer edges of the screen frame and mesh must sit FLUSH against surrounding posts, beams, walls, and floor.
@@ -212,7 +222,7 @@ ${viewRules}
 
 REFERENCE EXAMPLE IMAGE:
 You will receive TWO images in this message:
-- IMAGE #1 (the photo to enhance): Contains the placement reference with the screen already baked in. This is the ONLY image you should modify.
+- IMAGE #1 (the photo to enhance): Contains the placement guide with the screen area indicated. This is the ONLY image you should modify.
 - IMAGE #2 (style reference): Shows a completed, professionally installed screen for visual quality guidance. Do NOT copy its layout, dimensions, architecture, or surroundings. Use it ONLY as a target for:
   - Screen fabric/mesh texture realism and weave density.
   - Frame bar proportions (top cassette thickness, side track width, bottom rail height).
