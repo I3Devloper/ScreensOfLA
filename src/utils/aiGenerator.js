@@ -205,13 +205,15 @@ ABSOLUTE RULES:
 - Do NOT modify walls, posts, doors, windows, floor, ceiling, furniture, or plants outside the screen area.
 - Do NOT create a roll-down animation frame, partially lowered shade, or triangular shade.
 
-FRAME BARS MUST REMAIN VISIBLE AND ENHANCED:
-- TOP CASSETTE: a thick horizontal bar at the top edge of the opening.
-- LEFT and RIGHT SIDE TRACKS: slim vertical bars at the sides.
-- BOTTOM RAIL: a medium-thickness horizontal bar at the bottom edge.
+FRAME BARS — ONLY THESE FOUR, NOTHING ELSE:
+- TOP CASSETTE: a thick horizontal bar at the TOP edge of the opening only.
+- LEFT SIDE TRACK: a slim vertical bar at the LEFT edge of the opening only.
+- RIGHT SIDE TRACK: a slim vertical bar at the RIGHT edge of the opening only.
+- BOTTOM RAIL: a medium-thickness horizontal bar at the BOTTOM edge of the opening only.
 - ALL bars are ${color} powder-coated metal.
 - Do NOT let the frame bars disappear, fade, or become thin/small. Keep them prominent.
 - The bottom rail must be straight and horizontal, connecting the bottom-left to bottom-right corners.
+- NO EXTRA BARS: Do NOT add any horizontal or vertical bars, rails, dividers, mullions, baffles, seams, or structural elements in the MIDDLE of the screen fabric/mesh area. The screen surface between the four perimeter frame bars must be UNIFORM and uninterrupted.
 
 ZERO GAP ENFORCEMENT:
 - The outer edges of the screen frame and mesh must sit FLUSH against surrounding posts, beams, walls, and floor.
