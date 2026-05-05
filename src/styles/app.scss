@@ -1,204 +1,138 @@
 /**
- * Screen Visualizer - Minimal Styles
+ * Screen Visualizer - Modern Brand-Aligned Styles
+ * Harmonizes with screensofla.com WordPress / Elementor / Inspaire theme.
  */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Minimal base */
+/* ── Base ─────────────────────────────────────────────────────────── */
+
 .screen-visualizer {
-    @apply max-w-6xl mx-auto p-6 md:p-8;
+    @apply max-w-7xl mx-auto px-4 py-8 md:px-6 md:py-10;
+    font-family: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
 }
 
-/* Canvas Container */
-.canvas-container {
-    @apply relative bg-gray-100 rounded-lg overflow-hidden;
+/* ── Drop Zone ────────────────────────────────────────────────────── */
+
+.sv-drop-zone {
+    @apply relative border-2 border-dashed border-slate-300 rounded-xl p-6 text-center transition-all duration-200 bg-slate-50/60 cursor-pointer;
+}
+
+.sv-drop-zone:hover {
+    @apply border-brand-400 bg-brand-50/40;
+}
+
+.sv-drop-zone.drag-over {
+    @apply border-brand-500 bg-brand-50/60;
+}
+
+.sv-drop-zone.has-image {
+    @apply border-solid border-slate-200 p-2 bg-white cursor-default;
+}
+
+/* ── Image Preview ────────────────────────────────────────────────── */
+
+.sv-image-preview {
+    @apply relative rounded-lg overflow-hidden border border-slate-200 bg-white;
+}
+
+.sv-image-thumbnail {
+    @apply relative rounded-lg overflow-hidden bg-slate-100;
     aspect-ratio: 4 / 3;
 }
 
-.canvas-container img {
-    @apply w-full h-full object-contain;
-}
-
-/* Screen Overlay */
-.screen-overlay {
-    @apply absolute inset-0 pointer-events-none;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="none" stroke="%23000" stroke-width="0.5" opacity="0.2"/></svg>');
-    background-size: 20px 20px;
-    transition: clip-path 0.1s ease-out, opacity 0.1s ease-out;
-}
-
-/* Corner Pins */
-.corner-pin {
-    @apply absolute w-6 h-6 rounded-full bg-white border border-gray-300 cursor-move;
-    transform: translate(-50%, -50%);
-    z-index: 10;
-    touch-action: none;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.corner-pin::after {
-    @apply absolute w-2 h-2 bg-gray-800 rounded-full;
-    content: '';
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-
-.corner-label {
-    @apply absolute text-[10px] font-medium text-gray-500 bg-white px-1 rounded border border-gray-200;
-    transform: translate(-50%, -160%);
-    pointer-events: none;
-}
-
-/* Drop Zone - Minimal */
-.drop-zone {
-    @apply border border-dashed border-gray-300 rounded-lg p-5 text-center transition-all duration-200 bg-gray-50;
-}
-
-.drop-zone:hover {
-    @apply border-gray-400 bg-gray-100;
-}
-
-.drop-zone.drag-over {
-    @apply border-gray-500 bg-gray-100;
-}
-
-.drop-zone.has-image {
-    @apply border-solid border-gray-200 p-2 bg-white;
-}
-
-/* Thumbnail */
-.image-thumbnail {
-    @apply relative rounded-md overflow-hidden aspect-video bg-gray-100;
-}
-
-.image-thumbnail img {
+.sv-image-thumbnail img {
     @apply w-full h-full object-cover;
 }
 
-.remove-btn {
-    @apply absolute top-2 right-2 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center text-xs z-20;
-    @apply hover:bg-black/80 transition-colors;
+.sv-remove-btn {
+    @apply absolute top-2 right-2 w-7 h-7 bg-black/50 text-white rounded-full flex items-center justify-center text-sm leading-none z-20 transition-colors duration-150 hover:bg-black/70;
 }
 
-/* Range Slider */
-input[type="range"] {
-    @apply w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer;
-    -webkit-appearance: none;
-}
+/* ── Opening Selector ─────────────────────────────────────────────── */
 
-input[type="range"]::-webkit-slider-thumb {
-    @apply w-4 h-4 bg-gray-800 rounded-full;
-    -webkit-appearance: none;
-    appearance: none;
-    cursor: pointer;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-}
-
-input[type="range"]::-moz-range-thumb {
-    @apply w-4 h-4 bg-gray-800 rounded-full;
-    border: none;
-    cursor: pointer;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-}
-
-/* Buttons - Minimal */
-.btn {
-    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 flex items-center justify-center gap-2;
-    @apply disabled:opacity-40 disabled:cursor-not-allowed;
-}
-
-.btn-primary {
-    @apply bg-gray-900 text-white hover:bg-gray-800;
-}
-
-.btn-secondary {
-    @apply bg-white text-gray-700 border border-gray-200 hover:bg-gray-50;
-}
-
-.btn-danger {
-    @apply bg-white text-red-600 border border-red-200 hover:bg-red-50;
-}
-
-/* Animations */
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.spinner {
-    @apply w-4 h-4 rounded-full border-2 border-gray-200 border-t-gray-800;
-    animation: spin 0.8s linear infinite;
-}
-
-/* Screen Animation Wrapper */
-.screen-anim-wrapper {
-    @apply absolute inset-0;
-    clip-path: inset(0% 0% 0% 0%);
-    transition: clip-path 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Responsive */
-@media (max-width: 767px) {
-    .canvas-container {
-        aspect-ratio: 3 / 4;
-    }
-}
-
-@media (pointer: coarse) {
-    .corner-pin {
-        @apply w-8 h-8;
-    }
-    .btn {
-        @apply min-h-[44px];
-    }
-}
-
-/* Image Preview Area */
-.image-preview-area {
-    @apply relative rounded-lg overflow-hidden border border-gray-200 bg-white;
-}
-
-/* Opening Selector */
 .opening-selector {
     @apply bg-white;
 }
 
 .opening-selector-toolbar {
-    @apply flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50;
+    @apply flex items-center gap-2 px-3 py-2.5 border-b border-slate-100 bg-slate-50/80;
 }
 
 .opening-selector-hint {
-    @apply text-xs text-gray-500 px-3 py-2 bg-gray-50 border-b border-gray-100;
-}
-
-.opening-selector-candidates {
-    @apply flex flex-wrap gap-2 px-3 py-2 bg-gray-50 border-b border-gray-100;
-}
-
-.candidate-chip {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer;
-    @apply bg-white border-gray-200 text-gray-700 hover:bg-gray-50;
-}
-
-.candidate-chip.active {
-    @apply bg-blue-50 border-blue-300 text-blue-700;
-}
-
-.candidate-type {
-    @apply capitalize;
-}
-
-.candidate-confidence {
-    @apply text-gray-400;
+    @apply text-xs text-slate-500 px-3 py-2 bg-slate-50/60 border-b border-slate-100;
 }
 
 .opening-selector-canvas-wrap {
-    @apply relative bg-gray-100 overflow-hidden;
+    @apply relative bg-slate-100 overflow-hidden;
 }
 
 .opening-selector-canvas {
     @apply block w-full;
     touch-action: none;
+}
+
+/* ── Spinner ──────────────────────────────────────────────────────── */
+
+@keyframes sv-spin {
+    to { transform: rotate(360deg); }
+}
+
+.sv-spinner {
+    @apply w-4 h-4 rounded-full border-2 border-slate-200 border-t-brand-600;
+    animation: sv-spin 0.8s linear infinite;
+}
+
+/* ── Range Slider ─────────────────────────────────────────────────── */
+
+input[type="range"] {
+    @apply w-full h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer;
+    -webkit-appearance: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    @apply w-4 h-4 bg-brand-600 rounded-full shadow-sm;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 4px rgba(51, 153, 102, 0.15);
+}
+
+input[type="range"]::-moz-range-thumb {
+    @apply w-4 h-4 bg-brand-600 rounded-full shadow-sm border-0;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 4px rgba(51, 153, 102, 0.15);
+}
+
+/* ── Skeleton Loader ──────────────────────────────────────────────── */
+
+@keyframes sv-shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.sv-skeleton {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: sv-shimmer 1.5s infinite;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+
+@media (pointer: coarse) {
+    .sv-remove-btn {
+        @apply w-9 h-9 text-base;
+    }
 }

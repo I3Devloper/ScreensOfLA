@@ -8,17 +8,17 @@ import './styles/app.scss';
 
 // Wait for DOM to be ready
 function initScreenVisualizer() {
-    const container = document.getElementById('screen-visualizer-root');
+	const container = document.getElementById( 'screen-visualizer-root' );
 
-    if (container) {
-        const root = createRoot(container);
-        root.render(<App />);
-    }
+	if ( container ) {
+		const root = createRoot( container );
+		root.render( <App /> );
+	}
 }
 
 // Initialize on DOMContentLoaded
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initScreenVisualizer);
+if ( document.readyState === 'loading' ) {
+	document.addEventListener( 'DOMContentLoaded', initScreenVisualizer );
 } else {
-    initScreenVisualizer();
+	initScreenVisualizer();
 }
