@@ -17,10 +17,6 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-if (! defined('SCREEN_VISUALIZER_OPENROUTER_API_KEY')) {
-    define('SCREEN_VISUALIZER_OPENROUTER_API_KEY', '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');
-}
-
 /**
  * Get plugin version.
  */
@@ -65,21 +61,6 @@ function screen_visualizer_enqueue_assets() {
             true
         );
 
-        $screen_visualizer_config = array(
-            'openrouterProxyUrl' => esc_url_raw(rest_url('screen-visualizer/v1/openrouter')),
-        );
-
-        wp_add_inline_script(
-            'screen-visualizer',
-            'window.screenVisualizerConfig = window.screenVisualizerConfig || ' . wp_json_encode($screen_visualizer_config) . ';',
-            'before'
-        );
-
-        wp_localize_script(
-            'screen-visualizer',
-            'screenVisualizerConfig',
-            $screen_visualizer_config
-        );
 
         // Enqueue styles
         wp_enqueue_style(
@@ -91,125 +72,6 @@ function screen_visualizer_enqueue_assets() {
     }
 }
 add_action('wp_enqueue_scripts', 'screen_visualizer_enqueue_assets');
-
-/**
- * Forward a request to OpenRouter from the WordPress server.
- */
-function screen_visualizer_forward_openrouter_request($payload) {
-    $response = wp_remote_post(
-        'https://openrouter.ai/api/v1/chat/completions',
-        array(
-            'timeout' => 120,
-            'headers' => array(
-                'Authorization' => 'Bearer ' . SCREEN_VISUALIZER_OPENROUTER_API_KEY,
-                'Content-Type' => 'application/json',
-                'HTTP-Referer' => home_url('/'),
-                'X-Title' => 'Screen Visualizer',
-            ),
-            'body' => wp_json_encode($payload),
-        )
-    );
-
-    if (is_wp_error($response)) {
-        return new WP_REST_Response(
-            array(
-                'error' => $response->get_error_message(),
-            ),
-            502
-        );
-    }
-
-    $status_code = wp_remote_retrieve_response_code($response);
-    $body = wp_remote_retrieve_body($response);
-    $decoded = json_decode($body, true);
-
-    if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
-        return new WP_REST_Response(
-            array(
-                'error' => 'Unexpected OpenRouter response.',
-                'raw' => $body,
-            ),
-            502
-        );
-    }
-
-    return new WP_REST_Response($decoded, $status_code > 0 ? $status_code : 200);
-}
-
-/**
- * Proxy OpenRouter requests through WordPress.
- */
-function screen_visualizer_handle_openrouter_proxy($request) {
-    $params = $request->get_json_params();
-
-    if (! is_array($params)) {
-        return new WP_REST_Response(
-            array(
-                'error' => 'Invalid request body.',
-            ),
-            400
-        );
-    }
-
-    $model = isset($params['model']) ? sanitize_text_field((string) $params['model']) : '';
-    $allowed_models = array(
-        'google/gemini-3.1-flash-image-preview',
-        'z-ai/glm-4.6v',
-        'xiaomi/mimo-v2.5',
-        'inclusionai/ling-2.6-1t:free',
-        'google/gemma-4-31b-it:free',
-        'sourceful/riverflow-v2-fast',
-    );
-
-    if (! in_array($model, $allowed_models, true)) {
-        return new WP_REST_Response(
-            array(
-                'error' => 'Unsupported model.',
-            ),
-            400
-        );
-    }
-
-    if (empty($params['messages']) || ! is_array($params['messages'])) {
-        return new WP_REST_Response(
-            array(
-                'error' => 'Missing messages.',
-            ),
-            400
-        );
-    }
-
-    $payload = array(
-        'model' => $model,
-        'messages' => $params['messages'],
-    );
-
-    if (isset($params['response_format'])) {
-        $payload['response_format'] = $params['response_format'];
-    }
-
-    if (isset($params['modalities'])) {
-        $payload['modalities'] = $params['modalities'];
-    }
-
-    return screen_visualizer_forward_openrouter_request($payload);
-}
-
-/**
- * Register REST routes for AI proxy requests.
- */
-function screen_visualizer_register_rest_routes() {
-    register_rest_route(
-        'screen-visualizer/v1',
-        '/openrouter',
-        array(
-            'methods' => WP_REST_Server::CREATABLE,
-            'callback' => 'screen_visualizer_handle_openrouter_proxy',
-            'permission_callback' => '__return_true',
-        )
-    );
-}
-add_action('rest_api_init', 'screen_visualizer_register_rest_routes');
 
 /**
  * Register the [screen_visualizer] shortcode.

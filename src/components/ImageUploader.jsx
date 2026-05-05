@@ -8,7 +8,6 @@ const ImageUploader = ({
     onClearImage,
     currentImage,
     disabled = false,
-    isDetecting = false,
     children = null,
 }) => {
     const [isDragging, setIsDragging] = useState(false);
@@ -52,30 +51,30 @@ const ImageUploader = ({
     }, [onImageUpload, validateFile]);
 
     const openCameraPicker = useCallback(() => {
-        if (!disabled && !isDetecting) {
+        if (!disabled) {
             setCameraError(null);
             setIsCameraOpen(true);
         }
-    }, [disabled, isDetecting]);
+    }, [disabled]);
 
     const openUploadPicker = useCallback(() => {
-        if (!disabled && !isDetecting) {
+        if (!disabled) {
             uploadInputRef.current?.click();
         }
-    }, [disabled, isDetecting]);
+    }, [disabled]);
 
     const handleDrop = useCallback((e) => {
         e.preventDefault();
         setIsDragging(false);
-        if (disabled || isDetecting) return;
+        if (disabled) return;
         const files = Array.from(e.dataTransfer.files);
         if (files.length > 0) handleFile(files[0]);
-    }, [disabled, isDetecting, handleFile]);
+    }, [disabled, handleFile]);
 
     const handleDragOver = useCallback((e) => {
         e.preventDefault();
-        if (!disabled && !isDetecting) setIsDragging(true);
-    }, [disabled, isDetecting]);
+        if (!disabled) setIsDragging(true);
+    }, [disabled]);
 
     const handleDragLeave = useCallback((e) => {
         e.preventDefault();
@@ -224,7 +223,7 @@ const ImageUploader = ({
                     {children ? (
                         <div className="relative">
                             {children}
-                            {!isDetecting && onClearImage && (
+                            {onClearImage && (
                                 <button
                                     onClick={handleRemove}
                                     className="remove-btn"
@@ -237,16 +236,9 @@ const ImageUploader = ({
                         </div>
                     ) : (
                         <div className="image-thumbnail drop-zone has-image relative overflow-hidden">
-                            <img src={currentImage.url} alt={currentImage.name} className={isDetecting ? 'opacity-50' : ''} />
+                            <img src={currentImage.url} alt={currentImage.name} />
 
-                            {isDetecting && (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 z-10">
-                                    <div className="spinner w-6 h-6 mb-2" />
-                                    <p className="text-xs font-medium text-gray-700">Scanning...</p>
-                                </div>
-                            )}
-
-                            {!isDetecting && onClearImage && (
+                            {onClearImage && (
                                 <button
                                     onClick={handleRemove}
                                     className="remove-btn"
@@ -299,7 +291,7 @@ const ImageUploader = ({
                     type="button"
                     onClick={openCameraPicker}
                     className="btn btn-secondary flex-1 text-xs"
-                    disabled={disabled || isDetecting}
+                    disabled={disabled}
                 >
                     Take Photo
                 </button>
@@ -307,7 +299,7 @@ const ImageUploader = ({
                     type="button"
                     onClick={openUploadPicker}
                     className="btn btn-primary flex-1 text-xs"
-                    disabled={disabled || isDetecting}
+                    disabled={disabled}
                 >
                     Upload
                 </button>
@@ -384,7 +376,7 @@ const ImageUploader = ({
                             <button
                                 type="button"
                                 onClick={captureCameraPhoto}
-                                disabled={disabled || isDetecting || isCameraLoading || !!cameraError}
+                                disabled={disabled || isCameraLoading || !!cameraError}
                                 className="btn btn-primary text-xs"
                             >
                                 Capture

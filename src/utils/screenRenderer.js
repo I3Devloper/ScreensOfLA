@@ -132,65 +132,115 @@ const drawEdgeBar = (ctx, x1, y1, x2, y2, thickness, baseColor) => {
 };
 
 /**
+ * Creates a seamless woven cloth pattern canvas
+ */
+const createClothPattern = (hexColor, isInside, panelScale) => {
+    const pCanvas = document.createElement('canvas');
+    
+    // Increased density: smaller base size.
+    const baseSize = isInside ? 4 : 2.66; // Smaller sizes mean tighter weave
+    // Scale relative to the size of the panel to maintain perspective, but clamp to minimum 2px
+    const size = Math.max(2, Math.round(baseSize * panelScale));
+    
+    pCanvas.width = size;
+    pCanvas.height = size;
+    const pCtx = pCanvas.getContext('2d');
+    
+    if (!isInside) {
+        // Opaque base for exterior
+        pCtx.fillStyle = hexColor;
+        pCtx.fillRect(0, 0, size, size);
+    } else {
+        // Transparent base for interior
+        pCtx.clearRect(0, 0, size, size);
+    }
+    
+    const shadow = darken(hexColor, 40);
+    const highlight = lighten(hexColor, 30);
+    
+    // Horizontal thread
+    pCtx.fillStyle = shadow;
+    pCtx.globalAlpha = isInside ? 0.7 : 0.4;
+    pCtx.fillRect(0, 0, size, size * 0.3);
+    
+    pCtx.fillStyle = highlight;
+    pCtx.globalAlpha = isInside ? 0.4 : 0.2;
+    pCtx.fillRect(0, size * 0.3, size, size * 0.2);
+    
+    // Vertical thread (interwoven)
+    pCtx.fillStyle = shadow;
+    pCtx.globalAlpha = isInside ? 0.8 : 0.5;
+    pCtx.fillRect(size * 0.5, 0, size * 0.3, size);
+    
+    pCtx.fillStyle = highlight;
+    pCtx.globalAlpha = isInside ? 0.4 : 0.2;
+    pCtx.fillRect(size * 0.8, 0, size * 0.2, size);
+    
+    return pCanvas;
+};
+
+/**
  * Draws a fabric fill (clipped to a 4-point polygon).
  */
-const drawFabricPanel = (ctx, panelPts, color, isInside, visibility, width, height, scale) => {
+const drawFabricPanel = (ctx, panelPts, color, isInside, visibility, width, height) => {
     ctx.save();
     ctx.beginPath();
+    
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    
     panelPts.forEach((p, i) => {
         if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+        minX = Math.min(minX, p.x);
+        maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y);
+        maxY = Math.max(maxY, p.y);
     });
     ctx.closePath();
     ctx.clip();
+    
+    // Scale based on the panel's physical size to adjust weave density dynamically.
+    // If the panel is smaller (farther away or just small), the weave gets proportionally smaller.
+    // A 1024px dimension is our baseline 1.0 scale.
+    // We boost it slightly (e.g., x 1.5) to balance the baseSizes defined above.
+    const panelScale = (Math.max(maxX - minX, maxY - minY) / 1024) * 1.5;
 
     if (isInside) {
         const meshOpacity = 1 - (visibility / 100);
-        const meshColor = hexToRgba(color, meshOpacity);
-
-        ctx.fillStyle = hexToRgba(color, meshOpacity * 0.3);
+        
+        // Base dark tint
+        ctx.fillStyle = hexToRgba(color, meshOpacity * 0.4);
         ctx.fillRect(0, 0, width, height);
+        
+        // Cloth pattern
+        const patternCanvas = createClothPattern(color, true, panelScale);
+        ctx.fillStyle = ctx.createPattern(patternCanvas, 'repeat');
+        ctx.globalAlpha = meshOpacity * 1.5; // Boost pattern visibility relative to tint
+        ctx.fillRect(0, 0, width, height);
+        ctx.globalAlpha = 1.0;
 
-        ctx.strokeStyle = meshColor;
-        ctx.lineWidth = 0.5;
-        const gridSize = Math.max(2, Math.round(3 * scale));
-        for (let x = 0; x <= width; x += gridSize) {
-            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-        }
-        for (let y = 0; y <= height; y += gridSize) {
-            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-        }
     } else {
-        ctx.fillStyle = color;
+        // Opaque cloth pattern
+        const patternCanvas = createClothPattern(color, false, panelScale);
+        ctx.fillStyle = ctx.createPattern(patternCanvas, 'repeat');
         ctx.fillRect(0, 0, width, height);
 
-        const weaveSize = Math.max(3, Math.round(5 * scale));
-        ctx.strokeStyle = hexToRgba(color, 0.55);
-        ctx.lineWidth = 0.8;
-        for (let x = 0; x <= width; x += weaveSize) {
-            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-        }
-        for (let y = 0; y <= height; y += weaveSize) {
-            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-        }
-
-        ctx.strokeStyle = hexToRgba(color, 0.3);
-        ctx.lineWidth = 0.4;
-        const halfWeave = weaveSize / 2;
-        for (let x = halfWeave; x <= width; x += weaveSize) {
-            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-        }
-        for (let y = halfWeave; y <= height; y += weaveSize) {
-            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-        }
-
-        // Vertical lighting gradient per panel
+        // Subtle large-scale shadows/lighting for realism
         const minY = Math.min(...panelPts.map(p => p.y));
         const maxY = Math.max(...panelPts.map(p => p.y));
         const lightGrad = ctx.createLinearGradient(0, minY, 0, maxY);
-        lightGrad.addColorStop(0, 'rgba(255,255,255,0.04)');
-        lightGrad.addColorStop(0.5, 'rgba(0,0,0,0)');
-        lightGrad.addColorStop(1, 'rgba(0,0,0,0.06)');
+        lightGrad.addColorStop(0, 'rgba(255,255,255,0.05)');
+        lightGrad.addColorStop(0.3, 'rgba(0,0,0,0)');
+        lightGrad.addColorStop(0.7, 'rgba(0,0,0,0)');
+        lightGrad.addColorStop(1, 'rgba(0,0,0,0.15)');
         ctx.fillStyle = lightGrad;
+        ctx.fillRect(0, 0, width, height);
+        
+        // Subtle horizontal roller waves
+        const waveGrad = ctx.createLinearGradient(0, minY, 0, maxY);
+        for(let i=0; i<=1; i+=0.1) {
+            waveGrad.addColorStop(i, i % 0.2 === 0 ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.02)');
+        }
+        ctx.fillStyle = waveGrad;
         ctx.fillRect(0, 0, width, height);
     }
 
@@ -257,7 +307,7 @@ export const renderScreenOverlay = ({
             lerp(pts[3], pts[2], tLeft),   // panel BL
         ];
 
-        drawFabricPanel(ctx, panelPts, color, isInside, visibility, width, height, scale);
+        drawFabricPanel(ctx, panelPts, color, isInside, visibility, width, height);
     }
 
     // ── 2. Draw frame bars ────────────────────────────────────────────

@@ -5,10 +5,17 @@
 import { useState, useCallback } from '@wordpress/element';
 import ImageUploader from './components/ImageUploader';
 import OpeningSelector from './components/OpeningSelector';
-import { detectAllOpenings } from './utils/aiDetector';
-import { createWorkingImage, bakeOverlay } from './utils/aiGenerator';
+import { createWorkingImage, bakeOverlay } from './utils/imageUtils';
 import { addWatermark } from './utils/imageCompositor';
 import { renderScreenOverlay } from './utils/screenRenderer';
+
+const PRESET_COLORS = [
+    { name: 'Dark Bronze', hex: '#5C4033' },
+    { name: 'Black', hex: '#1a1a1a' },
+    { name: 'White', hex: '#f5f5f5' },
+    { name: 'Beige', hex: '#F5F5DC' },
+    { name: 'Slate', hex: '#708090' }
+];
 
 const revokePreviewUrl = (image) => {
     if (image?.url && image.url.startsWith('blob:')) {
@@ -38,23 +45,20 @@ function App() {
     const [outsideResult, setOutsideResult] = useState(null);
     const [isGeneratingOutside, setIsGeneratingOutside] = useState(false);
     const [outsideError, setOutsideError] = useState(null);
-    const [outsideCandidates, setOutsideCandidates] = useState([]);
     const [outsideCorners, setOutsideCorners] = useState([]);
     const [outsideDividers, setOutsideDividers] = useState([]);
-    const [isDetectingOutside, setIsDetectingOutside] = useState(false);
     const [outsideWorkingUrl, setOutsideWorkingUrl] = useState(null);
 
     const [insideImage, setInsideImage] = useState(null);
     const [insideResult, setInsideResult] = useState(null);
     const [isGeneratingInside, setIsGeneratingInside] = useState(false);
     const [insideError, setInsideError] = useState(null);
-    const [insideCandidates, setInsideCandidates] = useState([]);
     const [insideCorners, setInsideCorners] = useState([]);
     const [insideDividers, setInsideDividers] = useState([]);
-    const [isDetectingInside, setIsDetectingInside] = useState(false);
     const [insideWorkingUrl, setInsideWorkingUrl] = useState(null);
 
-    const [screenColor, setScreenColor] = useState('');
+    const [screenColor, setScreenColor] = useState('Dark Bronze');
+    const [isCustomColor, setIsCustomColor] = useState(false);
     const [interiorVisibility, setInteriorVisibility] = useState(90);
     const [activeView, setActiveView] = useState('outside');
 
@@ -64,7 +68,6 @@ function App() {
         setOutsideImage({ file, url: blobUrl, name: file.name });
         setOutsideResult(null);
         setOutsideError(null);
-        setOutsideCandidates([]);
         setOutsideCorners([]);
         setOutsideDividers([]);
         setActiveView('outside');
@@ -83,7 +86,6 @@ function App() {
         setInsideImage({ file, url: blobUrl, name: file.name });
         setInsideResult(null);
         setInsideError(null);
-        setInsideCandidates([]);
         setInsideCorners([]);
         setInsideDividers([]);
         setActiveView('inside');
@@ -101,7 +103,6 @@ function App() {
         setOutsideImage(null);
         setOutsideResult(null);
         setOutsideError(null);
-        setOutsideCandidates([]);
         setOutsideCorners([]);
         setOutsideDividers([]);
         setOutsideWorkingUrl(null);
@@ -113,53 +114,10 @@ function App() {
         setInsideImage(null);
         setInsideResult(null);
         setInsideError(null);
-        setInsideCandidates([]);
         setInsideCorners([]);
         setInsideDividers([]);
         setInsideWorkingUrl(null);
     }, [insideImage, insideWorkingUrl]);
-
-    const handleAutoDetectOutside = useCallback(async () => {
-        if (!outsideImage) return;
-        setIsDetectingOutside(true);
-        setOutsideError(null);
-        try {
-            const candidates = await detectAllOpenings(outsideImage.file);
-            if (candidates && candidates.length > 0) {
-                setOutsideCandidates(candidates);
-                setOutsideCorners(candidates[0].corners);
-                setOutsideDividers([]);
-            } else {
-                setOutsideError('Could not detect openings. Try manually selecting the area.');
-            }
-        } catch (err) {
-            console.error(err);
-            setOutsideError('Detection failed. Try manual selection.');
-        } finally {
-            setIsDetectingOutside(false);
-        }
-    }, [outsideImage]);
-
-    const handleAutoDetectInside = useCallback(async () => {
-        if (!insideImage) return;
-        setIsDetectingInside(true);
-        setInsideError(null);
-        try {
-            const candidates = await detectAllOpenings(insideImage.file);
-            if (candidates && candidates.length > 0) {
-                setInsideCandidates(candidates);
-                setInsideCorners(candidates[0].corners);
-                setInsideDividers([]);
-            } else {
-                setInsideError('Could not detect openings. Try manually selecting the area.');
-            }
-        } catch (err) {
-            console.error(err);
-            setInsideError('Detection failed. Try manual selection.');
-        } finally {
-            setIsDetectingInside(false);
-        }
-    }, [insideImage]);
 
     const handleGenerate = useCallback(async (viewType) => {
         const isOutside = viewType === 'outside';
@@ -242,15 +200,36 @@ function App() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
                 <div>
-                    <label htmlFor="screen-color" className="block text-sm font-medium text-gray-700 mb-1.5">Screen Color</label>
-                    <input
-                        id="screen-color"
-                        type="text"
-                        value={screenColor}
-                        onChange={(e) => setScreenColor(e.target.value)}
-                        placeholder="e.g. dark bronze, black, white"
-                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-gray-400"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Screen Frame Color</label>
+                    <div className="flex flex-wrap items-center gap-3">
+                        {PRESET_COLORS.map(color => (
+                            <button
+                                key={color.name}
+                                onClick={() => { setScreenColor(color.name); setIsCustomColor(false); }}
+                                className={`w-8 h-8 rounded-full border-2 transition-all shadow-sm ${!isCustomColor && screenColor.toLowerCase() === color.name.toLowerCase() ? 'border-blue-500 scale-110 ring-2 ring-blue-200' : 'border-gray-200 hover:scale-105 hover:shadow-md'}`}
+                                style={{ backgroundColor: color.hex }}
+                                title={color.name}
+                            />
+                        ))}
+                        <button
+                            onClick={() => setIsCustomColor(true)}
+                            className={`px-3 py-1 text-xs font-medium rounded-full border-2 transition-all ${isCustomColor ? 'border-blue-500 text-blue-700 bg-blue-50 ring-2 ring-blue-200' : 'border-gray-200 text-gray-600 hover:bg-gray-50 hover:shadow-sm'}`}
+                        >
+                            Custom
+                        </button>
+                    </div>
+                    {isCustomColor && (
+                        <div className="mt-3">
+                            <input
+                                id="screen-color"
+                                type="text"
+                                value={screenColor}
+                                onChange={(e) => setScreenColor(e.target.value)}
+                                placeholder="e.g. #336699 or forest green"
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            />
+                        </div>
+                    )}
                 </div>
                 <div>
                     <label htmlFor="interior-visibility" className="block text-sm font-medium text-gray-700 mb-1.5">Interior See-Through</label>
@@ -267,27 +246,24 @@ function App() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                <div className="lg:col-span-4 space-y-8">
+                <div className="lg:col-span-4 space-y-6">
                     {/* Outside */}
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Exterior</h2>
-                            {outsideResult && <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">Ready</span>}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 transition-shadow hover:shadow-md">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Exterior Photo</h2>
+                            {outsideResult && <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">Ready</span>}
                         </div>
                         <ImageUploader
                             onImageUpload={handleUploadOutside}
                             onClearImage={handleClearOutside}
                             currentImage={outsideImage}
                             disabled={isGeneratingOutside}
-                            isDetecting={isDetectingOutside}
                         >
                             {outsideImage && outsideWorkingUrl && (
                                 <OpeningSelector
                                     imageUrl={outsideWorkingUrl}
-                                    candidates={outsideCandidates}
                                     onChange={(c, d) => { setOutsideCorners(c); setOutsideDividers(d || []); }}
-                                    onAutoDetect={handleAutoDetectOutside}
-                                    disabled={isDetectingOutside || isGeneratingOutside}
+                                    disabled={isGeneratingOutside}
                                     viewType="outside"
                                 />
                             )}
@@ -295,7 +271,7 @@ function App() {
                         {outsideImage && (
                             <button
                                 onClick={() => handleGenerate('outside')}
-                                className="btn btn-primary w-full mt-3"
+                                className={`btn btn-primary w-full mt-4 transition-all duration-300 ${canGenerateOutside && !isGeneratingOutside && !outsideResult ? 'ring-2 ring-offset-2 ring-gray-900 animate-pulse shadow-lg' : ''}`}
                                 disabled={!canGenerateOutside || isGeneratingOutside}
                             >
                                 {isGeneratingOutside ? (
@@ -305,31 +281,26 @@ function App() {
                                 )}
                             </button>
                         )}
-                        {outsideError && <p className="text-red-600 text-xs mt-2">{outsideError}</p>}
+                        {outsideError && <p className="text-red-600 text-xs mt-3 bg-red-50 p-2 rounded">{outsideError}</p>}
                     </div>
 
-                    <div className="border-t border-gray-100" />
-
                     {/* Inside */}
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Interior</h2>
-                            {insideResult && <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">Ready</span>}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 transition-shadow hover:shadow-md">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Interior Photo</h2>
+                            {insideResult && <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">Ready</span>}
                         </div>
                         <ImageUploader
                             onImageUpload={handleUploadInside}
                             onClearImage={handleClearInside}
                             currentImage={insideImage}
                             disabled={isGeneratingInside}
-                            isDetecting={isDetectingInside}
                         >
                             {insideImage && insideWorkingUrl && (
                                 <OpeningSelector
                                     imageUrl={insideWorkingUrl}
-                                    candidates={insideCandidates}
                                     onChange={(c, d) => { setInsideCorners(c); setInsideDividers(d || []); }}
-                                    onAutoDetect={handleAutoDetectInside}
-                                    disabled={isDetectingInside || isGeneratingInside}
+                                    disabled={isGeneratingInside}
                                     viewType="inside"
                                 />
                             )}
@@ -337,7 +308,7 @@ function App() {
                         {insideImage && (
                             <button
                                 onClick={() => handleGenerate('inside')}
-                                className="btn btn-primary w-full mt-3"
+                                className={`btn btn-primary w-full mt-4 transition-all duration-300 ${canGenerateInside && !isGeneratingInside && !insideResult ? 'ring-2 ring-offset-2 ring-gray-900 animate-pulse shadow-lg' : ''}`}
                                 disabled={!canGenerateInside || isGeneratingInside}
                             >
                                 {isGeneratingInside ? (
@@ -347,7 +318,7 @@ function App() {
                                 )}
                             </button>
                         )}
-                        {insideError && <p className="text-red-600 text-xs mt-2">{insideError}</p>}
+                        {insideError && <p className="text-red-600 text-xs mt-3 bg-red-50 p-2 rounded">{insideError}</p>}
                     </div>
                 </div>
 

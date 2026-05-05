@@ -52,9 +52,7 @@ const pct = (val, total) => (val / total) * 100;
 
 const OpeningSelector = ({
     imageUrl,
-    candidates = [],
     onChange,
-    onAutoDetect,
     disabled = false,
     viewType = 'outside'
 }) => {
@@ -63,7 +61,6 @@ const OpeningSelector = ({
     const [imgSize, setImgSize] = useState({ width: 0, height: 0 });
     const [pins, setPins] = useState([]);
     const [dividers, setDividers] = useState([]); // array of fractions 0-1 (sorted)
-    const [selectedCandidateId, setSelectedCandidateId] = useState(null);
     const [dragging, setDragging] = useState(null); // { type: 'pin'|'divider', index }
     const imageRef = useRef(null);
 
@@ -101,17 +98,6 @@ const OpeningSelector = ({
         img.src = imageUrl;
     }, [imageUrl]);
 
-    // When candidates arrive from auto-detect
-    useEffect(() => {
-        if (candidates.length > 0) {
-            const best = candidates[0];
-            setPins(best.corners);
-            setSelectedCandidateId(best.id);
-            setDividers([]);
-            emitChange(best.corners, []);
-        }
-    }, [candidates]);
-
     // ── Canvas drawing ────────────────────────────────────────────────
 
     useEffect(() => {
@@ -124,24 +110,6 @@ const OpeningSelector = ({
 
         ctx.clearRect(0, 0, W, H);
         ctx.drawImage(imageRef.current, 0, 0, W, H);
-
-        // Draw candidate polygons
-        candidates.forEach((cand) => {
-            const isSelected = cand.id === selectedCandidateId;
-            ctx.save();
-            ctx.beginPath();
-            cand.corners.forEach((c, i) => {
-                const x = (c.x / 100) * W, y = (c.y / 100) * H;
-                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-            });
-            ctx.closePath();
-            ctx.strokeStyle = isSelected ? '#2563eb' : '#9ca3af';
-            ctx.lineWidth = isSelected ? 3 : 1.5;
-            ctx.setLineDash(isSelected ? [] : [5, 5]);
-            ctx.stroke();
-            if (isSelected) { ctx.fillStyle = 'rgba(37, 99, 235, 0.08)'; ctx.fill(); }
-            ctx.restore();
-        });
 
         if (pins.length !== 4) return;
 
@@ -221,7 +189,7 @@ const OpeningSelector = ({
             ctx.textBaseline = 'middle';
             ctx.fillText(pin.label, x, y);
         });
-    }, [imgSize, pins, dividers, candidates, selectedCandidateId, dragging]);
+    }, [imgSize, pins, dividers, dragging]);
 
     // ── Mouse / touch handlers ────────────────────────────────────────
 
@@ -257,26 +225,7 @@ const OpeningSelector = ({
             }
         }
 
-        // 3. Check candidates
-        if (candidates.length > 0) {
-            const ctx = canvasRef.current.getContext('2d');
-            for (const cand of candidates) {
-                ctx.beginPath();
-                cand.corners.forEach((c, i) => {
-                    const x = (c.x / 100) * width, y = (c.y / 100) * height;
-                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-                });
-                ctx.closePath();
-                if (ctx.isPointInPath(pos.x, pos.y)) {
-                    setSelectedCandidateId(cand.id);
-                    setPins(cand.corners);
-                    setDividers([]);
-                    emitChange(cand.corners, []);
-                    return;
-                }
-            }
-        }
-    }, [disabled, pins, dividers, imgSize, candidates, emitChange]);
+    }, [disabled, pins, dividers, imgSize, emitChange]);
 
     const handleMouseMove = useCallback((e) => {
         e.preventDefault();
@@ -344,12 +293,7 @@ const OpeningSelector = ({
         emitChange(pins, newDividers);
     }, [dividers, pins, emitChange]);
 
-    const handleAutoDetect = useCallback(() => {
-        setPins([]);
-        setDividers([]);
-        setSelectedCandidateId(null);
-        onAutoDetect();
-    }, [onAutoDetect]);
+
 
     const handleReset = useCallback(() => {
         // Re-place default pins
@@ -368,10 +312,6 @@ const OpeningSelector = ({
     return (
         <div className="opening-selector" ref={containerRef}>
             <div className="opening-selector-toolbar">
-                <button type="button" className="btn btn-secondary text-xs"
-                    onClick={handleAutoDetect} disabled={disabled}>
-                    Auto Detect
-                </button>
                 <button type="button" className="btn btn-secondary text-xs"
                     onClick={handleAddSplit} disabled={disabled || pins.length !== 4}>
                     ＋ Add Split
@@ -398,27 +338,6 @@ const OpeningSelector = ({
                 <p className="opening-selector-hint" style={{ fontSize: '11px', marginTop: '-4px' }}>
                     {dividers.length} split{dividers.length > 1 ? 's' : ''} — drag the yellow handle to reposition
                 </p>
-            )}
-
-            {candidates.length > 0 && (
-                <div className="opening-selector-candidates">
-                    {candidates.map((cand) => (
-                        <button
-                            key={cand.id}
-                            type="button"
-                            className={`candidate-chip ${selectedCandidateId === cand.id ? 'active' : ''}`}
-                            onClick={() => {
-                                setSelectedCandidateId(cand.id);
-                                setPins(cand.corners);
-                                setDividers([]);
-                                emitChange(cand.corners, []);
-                            }}
-                        >
-                            <span className="candidate-type">{cand.type.replace(/_/g, ' ')}</span>
-                            <span className="candidate-confidence">{Math.round(cand.confidence * 100)}%</span>
-                        </button>
-                    ))}
-                </div>
             )}
 
             <div className="opening-selector-canvas-wrap">
