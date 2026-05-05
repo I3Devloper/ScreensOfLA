@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from '@wordpress/element';
+import { useState, useCallback } from '@wordpress/element';
 
 const revokeIfBlob = ( url ) => {
 	if ( url && url.startsWith( 'blob:' ) ) {
@@ -37,8 +37,5 @@ export function useViewState() {
 		} );
 	}, [] );
 
-	return useMemo(
-		() => ( { state, update, reset } ),
-		[ state, update, reset ]
-	);
+	return { state, update, reset };
 }

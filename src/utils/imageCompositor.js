@@ -1,9 +1,9 @@
 /**
  * Image Compositor Utility
- * Adds watermark to the final AI-generated image.
- * For the refinement workflow, the AI already blended the screen correctly,
- * so we only need to add the watermark.
+ * Composites screen overlays and stamps the brand logo on final images.
  */
+
+import logoSrc from '../assets/SCREENS-OF-LOUISIANA-logo.png';
 
 const loadImage = ( src ) => {
 	return new Promise( ( resolve, reject ) => {
@@ -15,21 +15,33 @@ const loadImage = ( src ) => {
 	} );
 };
 
-const drawWatermark = ( ctx, width, height ) => {
-	const text = 'Screens of LA';
-	const fontSize = 24;
-	const paddingX = 20;
-	const paddingY = 20;
+let logoPromise = null;
+const LOGO_HEIGHT = 32;
+const PADDING_X = 20;
+const PADDING_Y = 20;
+
+const getLogo = () => {
+	if ( ! logoPromise ) {
+		logoPromise = loadImage( logoSrc );
+	}
+	return logoPromise;
+};
+
+const drawWatermark = ( ctx, width, height, logoImg ) => {
+	const logoWidth = ( logoImg.naturalWidth / logoImg.naturalHeight ) * LOGO_HEIGHT;
 
 	ctx.save();
-	ctx.font = `${ fontSize }px sans-serif`;
-	ctx.textBaseline = 'bottom';
 	ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
 	ctx.shadowOffsetX = 2;
 	ctx.shadowOffsetY = 2;
 	ctx.shadowBlur = 4;
-	ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-	ctx.fillText( text, paddingX, height - paddingY );
+	ctx.drawImage(
+		logoImg,
+		PADDING_X,
+		height - PADDING_Y - LOGO_HEIGHT,
+		logoWidth,
+		LOGO_HEIGHT
+	);
 	ctx.restore();
 };
 
@@ -41,7 +53,10 @@ const drawWatermark = ( ctx, width, height ) => {
  * @returns {Promise<string>} - Data URL with watermark
  */
 export const addWatermark = async ( aiUrl ) => {
-	const aiImg = await loadImage( aiUrl );
+	const [ aiImg, logoImg ] = await Promise.all( [
+		loadImage( aiUrl ),
+		getLogo(),
+	] );
 	const width = aiImg.naturalWidth;
 	const height = aiImg.naturalHeight;
 
@@ -51,7 +66,7 @@ export const addWatermark = async ( aiUrl ) => {
 	const ctx = canvas.getContext( '2d' );
 
 	ctx.drawImage( aiImg, 0, 0, width, height );
-	drawWatermark( ctx, width, height );
+	drawWatermark( ctx, width, height, logoImg );
 
 	return canvas.toDataURL( 'image/png' );
 };
@@ -66,9 +81,10 @@ export const addWatermark = async ( aiUrl ) => {
  * @returns {Promise<string>} - Full-size data URL with AI crop and watermark
  */
 export const compositeAiCrop = async ( originalUrl, aiCropUrl, cropInfo ) => {
-	const [ originalImg, aiCropImg ] = await Promise.all( [
+	const [ originalImg, aiCropImg, logoImg ] = await Promise.all( [
 		loadImage( originalUrl ),
 		loadImage( aiCropUrl ),
+		getLogo(),
 	] );
 
 	const width = originalImg.naturalWidth;
@@ -88,7 +104,7 @@ export const compositeAiCrop = async ( originalUrl, aiCropUrl, cropInfo ) => {
 		! crop
 	) {
 		ctx.drawImage( aiCropImg, 0, 0, width, height );
-		drawWatermark( ctx, width, height );
+		drawWatermark( ctx, width, height, logoImg );
 		return canvas.toDataURL( 'image/png' );
 	}
 
@@ -105,7 +121,7 @@ export const compositeAiCrop = async ( originalUrl, aiCropUrl, cropInfo ) => {
 	ctx.drawImage( aiCropImg, crop.x, crop.y, crop.width, crop.height );
 	ctx.restore();
 
-	drawWatermark( ctx, width, height );
+	drawWatermark( ctx, width, height, logoImg );
 
 	return canvas.toDataURL( 'image/png' );
 };
@@ -122,9 +138,10 @@ export const compositeAiCrop = async ( originalUrl, aiCropUrl, cropInfo ) => {
  * @returns {Promise<string>} - Data URL with blended result + watermark
  */
 export const recompositeOverlay = async ( aiUrl, overlayUrl, corners ) => {
-	const [ aiImg, overlayImg ] = await Promise.all( [
+	const [ aiImg, overlayImg, logoImg ] = await Promise.all( [
 		loadImage( aiUrl ),
 		loadImage( overlayUrl ),
+		getLogo(),
 	] );
 
 	const width = aiImg.naturalWidth;
@@ -158,7 +175,7 @@ export const recompositeOverlay = async ( aiUrl, overlayUrl, corners ) => {
 	ctx.restore();
 
 	// 3. Watermark
-	drawWatermark( ctx, width, height );
+	drawWatermark( ctx, width, height, logoImg );
 
 	return canvas.toDataURL( 'image/png' );
 };
@@ -174,9 +191,10 @@ export const compositeScreenImage = async ( originalUrl, aiUrl, corners ) => {
 		);
 	}
 
-	const [ originalImg, aiImg ] = await Promise.all( [
+	const [ originalImg, aiImg, logoImg ] = await Promise.all( [
 		loadImage( originalUrl ),
 		loadImage( aiUrl ),
+		getLogo(),
 	] );
 
 	const width = originalImg.naturalWidth;
@@ -210,7 +228,7 @@ export const compositeScreenImage = async ( originalUrl, aiUrl, corners ) => {
 	ctx.restore();
 
 	// 4. Draw watermark
-	drawWatermark( ctx, width, height );
+	drawWatermark( ctx, width, height, logoImg );
 
 	return canvas.toDataURL( 'image/png' );
 };

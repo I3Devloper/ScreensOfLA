@@ -85,9 +85,11 @@ const OpeningSelector = ( {
 	// Load image and auto-place pins
 	useEffect( () => {
 		if ( ! imageUrl ) return;
+		let cancelled = false;
 		const img = new Image();
 		img.crossOrigin = 'anonymous';
 		img.onload = () => {
+			if ( cancelled ) return;
 			imageRef.current = img;
 			const maxW = containerRef.current?.clientWidth || 800;
 			const aspect = img.naturalWidth / img.naturalHeight;
@@ -107,6 +109,9 @@ const OpeningSelector = ( {
 			onChangeRef.current( defaultPins, [] );
 		};
 		img.src = imageUrl;
+		return () => {
+			cancelled = true;
+		};
 	}, [ imageUrl ] );
 
 	// ── Canvas drawing ────────────────────────────────────────────────
