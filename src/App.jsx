@@ -1,18 +1,14 @@
 /**
  * Screen Visualizer - Main App Component (Option B)
- * Deterministic Canvas Render + Gemini Refinement
+ * Deterministic Canvas Render — no AI. Pixel-perfect screen placement.
  */
 import { useState, useCallback } from '@wordpress/element';
 import ImageUploader from './components/ImageUploader';
 import OpeningSelector from './components/OpeningSelector';
 import { detectAllOpenings } from './utils/aiDetector';
-import { createWorkingImage, bakeOverlay, cropToSelectedOpening, enhanceScreenImage } from './utils/aiGenerator';
-import { addWatermark, compositeAiCrop } from './utils/imageCompositor';
+import { createWorkingImage, bakeOverlay } from './utils/aiGenerator';
+import { addWatermark } from './utils/imageCompositor';
 import { renderScreenOverlay } from './utils/screenRenderer';
-
-// DIAGNOSTIC MODE: Set to true to skip Gemini and see the raw baked composite.
-// This helps identify if misalignment is in our code or caused by the AI.
-const DIAGNOSTIC_SKIP_AI = false;
 
 const revokePreviewUrl = (image) => {
     if (image?.url && image.url.startsWith('blob:')) {
@@ -44,6 +40,7 @@ function App() {
     const [outsideError, setOutsideError] = useState(null);
     const [outsideCandidates, setOutsideCandidates] = useState([]);
     const [outsideCorners, setOutsideCorners] = useState([]);
+    const [outsideDividers, setOutsideDividers] = useState([]);
     const [isDetectingOutside, setIsDetectingOutside] = useState(false);
     const [outsideWorkingUrl, setOutsideWorkingUrl] = useState(null);
 
@@ -53,6 +50,7 @@ function App() {
     const [insideError, setInsideError] = useState(null);
     const [insideCandidates, setInsideCandidates] = useState([]);
     const [insideCorners, setInsideCorners] = useState([]);
+    const [insideDividers, setInsideDividers] = useState([]);
     const [isDetectingInside, setIsDetectingInside] = useState(false);
     const [insideWorkingUrl, setInsideWorkingUrl] = useState(null);
 
@@ -68,6 +66,7 @@ function App() {
         setOutsideError(null);
         setOutsideCandidates([]);
         setOutsideCorners([]);
+        setOutsideDividers([]);
         setActiveView('outside');
         // Create working image (max 1024px) for consistent canvas dimensions
         try {
@@ -86,6 +85,7 @@ function App() {
         setInsideError(null);
         setInsideCandidates([]);
         setInsideCorners([]);
+        setInsideDividers([]);
         setActiveView('inside');
         try {
             const workingUrl = await createWorkingImage(blobUrl);
@@ -103,6 +103,7 @@ function App() {
         setOutsideError(null);
         setOutsideCandidates([]);
         setOutsideCorners([]);
+        setOutsideDividers([]);
         setOutsideWorkingUrl(null);
     }, [outsideImage, outsideWorkingUrl]);
 
@@ -114,6 +115,7 @@ function App() {
         setInsideError(null);
         setInsideCandidates([]);
         setInsideCorners([]);
+        setInsideDividers([]);
         setInsideWorkingUrl(null);
     }, [insideImage, insideWorkingUrl]);
 
@@ -126,6 +128,7 @@ function App() {
             if (candidates && candidates.length > 0) {
                 setOutsideCandidates(candidates);
                 setOutsideCorners(candidates[0].corners);
+                setOutsideDividers([]);
             } else {
                 setOutsideError('Could not detect openings. Try manually selecting the area.');
             }
@@ -146,6 +149,7 @@ function App() {
             if (candidates && candidates.length > 0) {
                 setInsideCandidates(candidates);
                 setInsideCorners(candidates[0].corners);
+                setInsideDividers([]);
             } else {
                 setInsideError('Could not detect openings. Try manually selecting the area.');
             }
@@ -161,6 +165,7 @@ function App() {
         const isOutside = viewType === 'outside';
         const targetImage = isOutside ? outsideImage : insideImage;
         const corners = isOutside ? outsideCorners : insideCorners;
+        const dividers = isOutside ? outsideDividers : insideDividers;
         const workingUrl = isOutside ? outsideWorkingUrl : insideWorkingUrl;
 
         if (!targetImage || !Array.isArray(corners) || corners.length !== 4) {
@@ -200,42 +205,21 @@ function App() {
                 width: dims.width,
                 height: dims.height,
                 corners,
+                dividers,
                 viewType,
                 screenColor,
                 interiorVisibility: isOutside ? undefined : interiorVisibility
             });
             const overlayUrl = overlayCanvas.toDataURL('image/png');
 
-            // 3. Bake overlay onto working image at full opacity
-            // Both are at the SAME dimensions, so the screen aligns perfectly.
+            // 3. Bake overlay onto working image — screen is now pixel-perfect
             const compositeUrl = await bakeOverlay(workingUrl, overlayUrl);
 
-            if (DIAGNOSTIC_SKIP_AI) {
-                // DIAGNOSTIC: Skip Gemini, show raw baked composite + watermark
-                const watermarkedUrl = await addWatermark(compositeUrl);
-                if (isOutside) setOutsideResult(watermarkedUrl);
-                else setInsideResult(watermarkedUrl);
-            } else {
-                // 4. Send Gemini the smallest useful reference.
-                // Exterior crops out the wider patio so the model cannot expand the screen
-                // to the larger bay. Interior keeps the full image because that path is stable.
-                const aiInput = isOutside
-                    ? await cropToSelectedOpening(compositeUrl, corners)
-                    : { url: compositeUrl, corners };
-                const resultUrl = await enhanceScreenImage(aiInput.url, viewType, screenColor, aiInput.corners);
+            // 4. Add watermark and we're done — no AI call needed
+            const watermarkedUrl = await addWatermark(compositeUrl);
+            if (isOutside) setOutsideResult(watermarkedUrl);
+            else setInsideResult(watermarkedUrl);
 
-                if (resultUrl) {
-                    // 5. Use AI pixels only for the screen area; never re-draw the raw overlay.
-                    const watermarkedUrl = isOutside
-                        ? await compositeAiCrop(workingUrl, resultUrl, aiInput)
-                        : await addWatermark(resultUrl);
-                    if (isOutside) setOutsideResult(watermarkedUrl);
-                    else setInsideResult(watermarkedUrl);
-                } else {
-                    if (isOutside) setOutsideError('Generation failed. Try again.');
-                    else setInsideError('Generation failed. Try again.');
-                }
-            }
         } catch (err) {
             console.error(err);
             if (isOutside) setOutsideError('Generation failed. Please try again.');
@@ -244,7 +228,7 @@ function App() {
             if (isOutside) setIsGeneratingOutside(false);
             else setIsGeneratingInside(false);
         }
-    }, [outsideImage, insideImage, outsideCorners, insideCorners, outsideWorkingUrl, insideWorkingUrl, screenColor, interiorVisibility]);
+    }, [outsideImage, insideImage, outsideCorners, insideCorners, outsideDividers, insideDividers, outsideWorkingUrl, insideWorkingUrl, screenColor, interiorVisibility]);
 
     const canGenerateOutside = outsideImage && Array.isArray(outsideCorners) && outsideCorners.length === 4;
     const canGenerateInside = insideImage && Array.isArray(insideCorners) && insideCorners.length === 4;
@@ -301,7 +285,7 @@ function App() {
                                 <OpeningSelector
                                     imageUrl={outsideWorkingUrl}
                                     candidates={outsideCandidates}
-                                    onChange={setOutsideCorners}
+                                    onChange={(c, d) => { setOutsideCorners(c); setOutsideDividers(d || []); }}
                                     onAutoDetect={handleAutoDetectOutside}
                                     disabled={isDetectingOutside || isGeneratingOutside}
                                     viewType="outside"
@@ -343,7 +327,7 @@ function App() {
                                 <OpeningSelector
                                     imageUrl={insideWorkingUrl}
                                     candidates={insideCandidates}
-                                    onChange={setInsideCorners}
+                                    onChange={(c, d) => { setInsideCorners(c); setInsideDividers(d || []); }}
                                     onAutoDetect={handleAutoDetectInside}
                                     disabled={isDetectingInside || isGeneratingInside}
                                     viewType="inside"
