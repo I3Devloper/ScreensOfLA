@@ -318,11 +318,15 @@ export const renderScreenOverlay = ( {
 	viewType,
 	screenColor,
 	interiorVisibility,
+	retractLevel = 0,
+	useColumnGaps = false,
+	targetCanvas = null,
 } ) => {
-	const canvas = document.createElement( 'canvas' );
+	const canvas = targetCanvas || document.createElement( 'canvas' );
 	canvas.width = width;
 	canvas.height = height;
 	const ctx = canvas.getContext( '2d' );
+	ctx.clearRect( 0, 0, width, height );
 
 	const color = normalizeColor( screenColor );
 	const isInside = viewType === 'inside';
@@ -336,23 +340,61 @@ export const renderScreenOverlay = ( {
 		y: ( c.y / 100 ) * height,
 	} ) );
 
+	const r = Math.max( 0, Math.min( 1, retractLevel || 0 ) );
+	const newBL = lerp( pts[ 3 ], pts[ 0 ], r );
+	const newBR = lerp( pts[ 2 ], pts[ 1 ], r );
+
 	const sortedDivs = [ ...dividers ].sort( ( a, b ) => a - b );
 
 	// Build panel boundaries: [0, div1, div2, ..., 1]
 	const boundaries = [ 0, ...sortedDivs, 1 ];
 
+	// ── Column gap calculations ────────────────────────────────────────
+
+	const hasGaps = useColumnGaps && sortedDivs.length > 0;
+	let topOffsetFrac = 0;
+	let botOffsetFrac = 0;
+	let colThick = 0;
+
+	if ( hasGaps ) {
+		const gapWidth = Math.min( Math.max( width, height ) * 0.015, 24 );
+		colThick = Math.max( 10, Math.round( 20 * scale ) );
+		const topLen = Math.hypot(
+			pts[ 1 ].x - pts[ 0 ].x,
+			pts[ 1 ].y - pts[ 0 ].y
+		);
+		const botLen = Math.hypot(
+			pts[ 2 ].x - pts[ 3 ].x,
+			pts[ 2 ].y - pts[ 3 ].y
+		);
+		if ( topLen > 0 ) topOffsetFrac = gapWidth / 2 / topLen;
+		if ( botLen > 0 ) botOffsetFrac = gapWidth / 2 / botLen;
+	}
+
+	const getAdjBoundary = ( b, isStart ) => {
+		if ( ! hasGaps ) return b;
+		if ( isStart && b > 0 ) return b + topOffsetFrac;
+		if ( ! isStart && b < 1 ) return b - topOffsetFrac;
+		return b;
+	};
+
 	// ── 1. Draw fabric for each panel ─────────────────────────────────
 
 	for ( let i = 0; i < boundaries.length - 1; i++ ) {
-		const tLeft = boundaries[ i ];
-		const tRight = boundaries[ i + 1 ];
+		const tLeft = getAdjBoundary( boundaries[ i ], true );
+		const tRight = getAdjBoundary( boundaries[ i + 1 ], false );
 
 		// 4 corners of this panel (interpolated from outer corners)
+		const panelTL = lerp( pts[ 0 ], pts[ 1 ], tLeft );
+		const panelTR = lerp( pts[ 0 ], pts[ 1 ], tRight );
+		const panelBR = lerp( pts[ 3 ], pts[ 2 ], tRight );
+		const panelBL = lerp( pts[ 3 ], pts[ 2 ], tLeft );
+
 		const panelPts = [
-			lerp( pts[ 0 ], pts[ 1 ], tLeft ), // panel TL
-			lerp( pts[ 0 ], pts[ 1 ], tRight ), // panel TR
-			lerp( pts[ 3 ], pts[ 2 ], tRight ), // panel BR
-			lerp( pts[ 3 ], pts[ 2 ], tLeft ), // panel BL
+			panelTL,
+			panelTR,
+			lerp( panelBR, panelTR, r ),
+			lerp( panelBL, panelTL, r ),
 		];
 
 		drawFabricPanel(
@@ -376,9 +418,8 @@ export const renderScreenOverlay = ( {
 	);
 	const railThick = Math.max( 6, Math.round( 14 * scale * sizeMultiplier ) );
 	const trackThick = Math.max( 5, Math.round( 10 * scale * sizeMultiplier ) );
-	const postThick = Math.max( 6, Math.round( 12 * scale * sizeMultiplier ) ); // center posts
+	const postThick = Math.max( 6, Math.round( 12 * scale * sizeMultiplier ) );
 
-	// Helper: extend one end of a segment
 	const extendAsym = ( ax, ay, bx, by, startAmt, endAmt ) => {
 		const dx = bx - ax,
 			dy = by - ay;
@@ -396,102 +437,113 @@ export const renderScreenOverlay = ( {
 	const extend = ( ax, ay, bx, by, amt ) =>
 		extendAsym( ax, ay, bx, by, amt, amt );
 
-	// Outer left track (TL→BL), extend up into cassette only
-	const leftExt = extendAsym(
-		pts[ 0 ].x,
-		pts[ 0 ].y,
-		pts[ 3 ].x,
-		pts[ 3 ].y,
-		cassetteThick * 0.6,
-		0
-	);
-	drawEdgeBar(
-		ctx,
-		leftExt.x1,
-		leftExt.y1,
-		leftExt.x2,
-		leftExt.y2,
-		trackThick,
-		FRAME_COLOR
-	);
-
-	// Outer right track (TR→BR), extend up into cassette only
-	const rightExt = extendAsym(
-		pts[ 1 ].x,
-		pts[ 1 ].y,
-		pts[ 2 ].x,
-		pts[ 2 ].y,
-		cassetteThick * 0.6,
-		0
-	);
-	drawEdgeBar(
-		ctx,
-		rightExt.x1,
-		rightExt.y1,
-		rightExt.x2,
-		rightExt.y2,
-		trackThick,
-		FRAME_COLOR
-	);
-
-	// Center post tracks (one per divider)
-	sortedDivs.forEach( ( t ) => {
-		const divTop = lerp( pts[ 0 ], pts[ 1 ], t );
-		const divBot = lerp( pts[ 3 ], pts[ 2 ], t );
-		const divExt = extendAsym(
-			divTop.x,
-			divTop.y,
-			divBot.x,
-			divBot.y,
-			cassetteThick * 0.6,
-			0
-		);
+	const drawTrack = ( x1, y1, x2, y2 ) => {
+		const ext = extendAsym( x1, y1, x2, y2, cassetteThick * 0.6, 0 );
 		drawEdgeBar(
 			ctx,
-			divExt.x1,
-			divExt.y1,
-			divExt.x2,
-			divExt.y2,
-			postThick,
+			ext.x1,
+			ext.y1,
+			ext.x2,
+			ext.y2,
+			trackThick,
 			FRAME_COLOR
 		);
-	} );
+	};
 
-	// Top cassette (full width TL→TR), extends past outer tracks
-	const topExt = extend(
-		pts[ 0 ].x,
-		pts[ 0 ].y,
-		pts[ 1 ].x,
-		pts[ 1 ].y,
-		trackThick * 0.6
-	);
-	drawEdgeBar(
-		ctx,
-		topExt.x1,
-		topExt.y1,
-		topExt.x2,
-		topExt.y2,
-		cassetteThick,
-		FRAME_COLOR
-	);
+	const drawBottomRail = ( x1, y1, x2, y2 ) => {
+		const ext = extend( x1, y1, x2, y2, trackThick * 0.6 );
+		drawEdgeBar(
+			ctx,
+			ext.x1,
+			ext.y1,
+			ext.x2,
+			ext.y2,
+			railThick,
+			FRAME_COLOR
+		);
+	};
 
-	// Bottom rail (full width BL→BR), extends past outer tracks
-	const bottomExt = extend(
-		pts[ 3 ].x,
-		pts[ 3 ].y,
-		pts[ 2 ].x,
-		pts[ 2 ].y,
-		trackThick * 0.6
-	);
-	drawEdgeBar(
-		ctx,
-		bottomExt.x1,
-		bottomExt.y1,
-		bottomExt.x2,
-		bottomExt.y2,
-		railThick,
-		FRAME_COLOR
-	);
+	const drawCassette = ( x1, y1, x2, y2 ) => {
+		const ext = extend( x1, y1, x2, y2, trackThick * 0.6 );
+		drawEdgeBar(
+			ctx,
+			ext.x1,
+			ext.y1,
+			ext.x2,
+			ext.y2,
+			cassetteThick,
+			FRAME_COLOR
+		);
+	};
+
+	if ( hasGaps ) {
+		// Column gap mode: each panel is an independent unit
+		for ( let i = 0; i < boundaries.length - 1; i++ ) {
+			const tLeft = getAdjBoundary( boundaries[ i ], true );
+			const tRight = getAdjBoundary( boundaries[ i + 1 ], false );
+
+			const panelTL = lerp( pts[ 0 ], pts[ 1 ], tLeft );
+			const panelTR = lerp( pts[ 0 ], pts[ 1 ], tRight );
+			const panelBR = lerp( pts[ 3 ], pts[ 2 ], tRight );
+			const panelBL = lerp( pts[ 3 ], pts[ 2 ], tLeft );
+			const retBR = lerp( panelBR, panelTR, r );
+			const retBL = lerp( panelBL, panelTL, r );
+
+			// Tracks stay full height (structural guide channels)
+			drawTrack( panelTL.x, panelTL.y, panelBL.x, panelBL.y );
+			drawTrack( panelTR.x, panelTR.y, panelBR.x, panelBR.y );
+			drawCassette( panelTL.x, panelTL.y, panelTR.x, panelTR.y );
+			// Bottom rail moves with retraction
+			drawBottomRail( retBL.x, retBL.y, retBR.x, retBR.y );
+		}
+
+		// Draw thick structural columns at each divider
+		sortedDivs.forEach( ( t ) => {
+			const colTop = lerp( pts[ 0 ], pts[ 1 ], t );
+			const colBot = lerp( pts[ 3 ], pts[ 2 ], t );
+			drawEdgeBar(
+				ctx,
+				colTop.x,
+				colTop.y,
+				colBot.x,
+				colBot.y,
+				colThick,
+				FRAME_COLOR
+			);
+		} );
+	} else {
+		// Default mode: shared posts, continuous rails
+		// Outer tracks stay full height (structural guide channels)
+		drawTrack( pts[ 0 ].x, pts[ 0 ].y, pts[ 3 ].x, pts[ 3 ].y );
+		drawTrack( pts[ 1 ].x, pts[ 1 ].y, pts[ 2 ].x, pts[ 2 ].y );
+
+		// Center posts stay full height
+		sortedDivs.forEach( ( t ) => {
+			const divTop = lerp( pts[ 0 ], pts[ 1 ], t );
+			const divBot = lerp( pts[ 3 ], pts[ 2 ], t );
+			const divExt = extendAsym(
+				divTop.x,
+				divTop.y,
+				divBot.x,
+				divBot.y,
+				cassetteThick * 0.6,
+				0
+			);
+			drawEdgeBar(
+				ctx,
+				divExt.x1,
+				divExt.y1,
+				divExt.x2,
+				divExt.y2,
+				postThick,
+				FRAME_COLOR
+			);
+		} );
+
+		drawCassette( pts[ 0 ].x, pts[ 0 ].y, pts[ 1 ].x, pts[ 1 ].y );
+		// Bottom rail moves with retraction
+		drawBottomRail( newBL.x, newBL.y, newBR.x, newBR.y );
+	}
 
 	return canvas;
 };

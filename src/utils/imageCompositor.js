@@ -5,7 +5,7 @@
 
 import logoSrc from '../assets/SCREENS-OF-LOUISIANA-logo.png';
 
-const loadImage = ( src ) => {
+export const loadImage = ( src ) => {
 	return new Promise( ( resolve, reject ) => {
 		const img = new Image();
 		img.crossOrigin = 'anonymous';
@@ -16,19 +16,20 @@ const loadImage = ( src ) => {
 };
 
 let logoPromise = null;
-const LOGO_HEIGHT = 32;
+export const LOGO_HEIGHT = 32;
 const PADDING_X = 20;
 const PADDING_Y = 20;
 
-const getLogo = () => {
+export const getLogo = () => {
 	if ( ! logoPromise ) {
 		logoPromise = loadImage( logoSrc );
 	}
 	return logoPromise;
 };
 
-const drawWatermark = ( ctx, width, height, logoImg ) => {
-	const logoWidth = ( logoImg.naturalWidth / logoImg.naturalHeight ) * LOGO_HEIGHT;
+export const drawWatermark = ( ctx, width, height, logoImg ) => {
+	const logoWidth =
+		( logoImg.naturalWidth / logoImg.naturalHeight ) * LOGO_HEIGHT;
 
 	ctx.save();
 	ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';

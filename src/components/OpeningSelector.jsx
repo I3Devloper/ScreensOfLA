@@ -73,14 +73,11 @@ const OpeningSelector = ( {
 	onChangeRef.current = onChange;
 
 	// Emit changes to parent
-	const emitChange = useCallback(
-		( newPins, newDividers ) => {
-			if ( newPins.length === 4 ) {
-				onChangeRef.current( newPins, newDividers || [] );
-			}
-		},
-		[]
-	);
+	const emitChange = useCallback( ( newPins, newDividers ) => {
+		if ( newPins.length === 4 ) {
+			onChangeRef.current( newPins, newDividers || [] );
+		}
+	}, [] );
 
 	// Load image and auto-place pins
 	useEffect( () => {
