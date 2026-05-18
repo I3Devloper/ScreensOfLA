@@ -2,7 +2,7 @@
  * Screen Visualizer - Main App Component
  * Deterministic Canvas Render — no AI. Pixel-perfect screen placement.
  */
-import { useState, useCallback } from '@wordpress/element';
+import { useState, useCallback, useRef, useEffect } from '@wordpress/element';
 import ImageUploader from './components/ImageUploader';
 import OpeningSelector from './components/OpeningSelector';
 import { useViewState } from './hooks/useViewState';
@@ -18,6 +18,8 @@ const PRESET_COLORS = [
 	{ name: 'Beige', hex: '#F5F5DC' },
 	{ name: 'Slate', hex: '#708090' },
 ];
+
+const RELOAD_THROTTLE_MS = 60;
 
 const revokePreviewUrl = ( image ) => {
 	if ( image?.url && image.url.startsWith( 'blob:' ) ) {
@@ -42,6 +44,43 @@ const downloadImage = async ( dataUrl, filename ) => {
 	}
 };
 
+/**
+ * Calculate the number of screen panels from dividers and beams.
+ */
+const calcPanelCount = ( dividers, beams ) => {
+	const sortedDivs = [ ...dividers ].sort( ( a, b ) => a - b );
+	const sortedBeams = [ ...beams ].sort( ( a, b ) => a.left - b.left );
+	const allBoundaries = [ 0, ...sortedDivs ];
+	sortedBeams.forEach( ( beam ) => {
+		allBoundaries.push( beam.left );
+		allBoundaries.push( beam.right );
+	} );
+	allBoundaries.push( 1 );
+	allBoundaries.sort( ( a, b ) => a - b );
+
+	let count = 0;
+	for ( let i = 0; i < allBoundaries.length - 1; i++ ) {
+		const tLeft = allBoundaries[ i ];
+		const tRight = allBoundaries[ i + 1 ];
+		const isBeamGap = sortedBeams.some(
+			( beam ) => tLeft >= beam.left - 0.001 && tRight <= beam.right + 0.001
+		);
+		if ( ! isBeamGap ) count++;
+	}
+	return Math.max( 1, count );
+};
+
+/**
+ * Sync retractLevels array length to match panel count.
+ * Preserves existing values, fills new slots with 1 (fully closed).
+ */
+const syncRetractLevels = ( currentLevels, panelCount ) => {
+	const levels = [ ...( currentLevels || [] ) ];
+	while ( levels.length < panelCount ) levels.push( 1 );
+	if ( levels.length > panelCount ) levels.length = panelCount;
+	return levels;
+};
+
 function App() {
 	const outside = useViewState();
 	const inside = useViewState();
@@ -52,9 +91,11 @@ function App() {
 	const [ activeView, setActiveView ] = useState( 'outside' );
 	const [ isRecording, setIsRecording ] = useState( false );
 	const [ recordingProgress, setRecordingProgress ] = useState( 0 );
-	const [ useColumnGaps, setUseColumnGaps ] = useState( false );
 	const [ videoPreviewUrl, setVideoPreviewUrl ] = useState( null );
 	const [ videoPreviewFilename, setVideoPreviewFilename ] = useState( '' );
+
+	// Throttled re-render refs
+	const reloadTimersRef = useRef( { outside: null, inside: null } );
 
 	const handleUploadOutside = useCallback(
 		async ( file ) => {
@@ -66,6 +107,8 @@ function App() {
 				error: null,
 				corners: [],
 				dividers: [],
+				beams: [],
+				retractLevels: [ 1 ],
 				workingUrl: null,
 			} );
 			setActiveView( 'outside' );
@@ -89,6 +132,8 @@ function App() {
 				error: null,
 				corners: [],
 				dividers: [],
+				beams: [],
+				retractLevels: [ 1 ],
 				workingUrl: null,
 			} );
 			setActiveView( 'inside' );
@@ -103,12 +148,81 @@ function App() {
 	);
 
 	const handleClearOutside = useCallback( () => {
+		if ( reloadTimersRef.current.outside ) {
+			clearTimeout( reloadTimersRef.current.outside );
+			reloadTimersRef.current.outside = null;
+		}
 		outside.reset();
 	}, [ outside ] );
 
 	const handleClearInside = useCallback( () => {
+		if ( reloadTimersRef.current.inside ) {
+			clearTimeout( reloadTimersRef.current.inside );
+			reloadTimersRef.current.inside = null;
+		}
 		inside.reset();
 	}, [ inside ] );
+
+	/**
+	 * Regenerate the preview with current retract levels (throttled).
+	 */
+	const handleRetractChange = useCallback(
+		( viewType, newLevels ) => {
+			const isOutside = viewType === 'outside';
+			const view = isOutside ? outside : inside;
+			const key = isOutside ? 'outside' : 'inside';
+
+			// Update state immediately for UI responsiveness
+			view.update( { retractLevels: newLevels } );
+
+			// Skip if no result yet
+			if ( ! view.state.result || ! view.state.workingUrl ) return;
+
+			// Throttle re-render
+			if ( reloadTimersRef.current[ key ] ) {
+				clearTimeout( reloadTimersRef.current[ key ] );
+			}
+
+			reloadTimersRef.current[ key ] = setTimeout( async () => {
+				reloadTimersRef.current[ key ] = null;
+				try {
+					const workingUrl = view.state.workingUrl;
+					const getImgDims = () =>
+						new Promise( ( res ) => {
+							const img = new Image();
+							img.onload = () =>
+								res( {
+									width: img.naturalWidth,
+									height: img.naturalHeight,
+								} );
+							img.src = workingUrl;
+						} );
+					const dims = await getImgDims();
+
+					const overlayCanvas = renderScreenOverlay( {
+						width: dims.width,
+						height: dims.height,
+						corners: view.state.corners,
+						dividers: view.state.dividers,
+						beams: view.state.beams || [],
+						viewType,
+						screenColor,
+						interiorVisibility: isOutside
+							? undefined
+							: interiorVisibility,
+						retractLevels: newLevels,
+					} );
+					const overlayUrl = overlayCanvas.toDataURL( 'image/png' );
+					const compositeUrl = await bakeOverlay( workingUrl, overlayUrl );
+					const watermarkedUrl = await addWatermark( compositeUrl );
+					view.update( { result: watermarkedUrl } );
+				} catch ( err ) {
+					console.error( 'Retract re-render failed:', err );
+				}
+			}, RELOAD_THROTTLE_MS );
+		},
+		[ outside, inside, screenColor, interiorVisibility ]
+	);
 
 	const handleGenerate = useCallback(
 		async ( viewType ) => {
@@ -117,7 +231,10 @@ function App() {
 			const targetImage = view.state.image;
 			const corners = view.state.corners;
 			const dividers = view.state.dividers;
+			const beams = view.state.beams || [];
 			const workingUrl = view.state.workingUrl;
+			const panelCount = calcPanelCount( dividers, beams );
+			const retractLevels = syncRetractLevels( view.state.retractLevels, panelCount );
 
 			if (
 				! targetImage ||
@@ -137,11 +254,10 @@ function App() {
 				return;
 			}
 
-			view.update( { isGenerating: true, error: null, result: null } );
+			view.update( { isGenerating: true, error: null, result: null, retractLevels } );
 			setActiveView( viewType );
 
 			try {
-				// 1. Get working image dimensions (already max 1024px)
 				const getImgDims = () =>
 					new Promise( ( res ) => {
 						const img = new Image();
@@ -154,28 +270,26 @@ function App() {
 					} );
 				const dims = await getImgDims();
 
-				// 2. Render deterministic screen overlay at WORKING image dimensions
 				const overlayCanvas = renderScreenOverlay( {
 					width: dims.width,
 					height: dims.height,
 					corners,
 					dividers,
+					beams,
 					viewType,
 					screenColor,
-					useColumnGaps,
 					interiorVisibility: isOutside
 						? undefined
 						: interiorVisibility,
+					retractLevels,
 				} );
 				const overlayUrl = overlayCanvas.toDataURL( 'image/png' );
 
-				// 3. Bake overlay onto working image — screen is now pixel-perfect
 				const compositeUrl = await bakeOverlay(
 					workingUrl,
 					overlayUrl
 				);
 
-				// 4. Add watermark and we're done — no AI call needed
 				const watermarkedUrl = await addWatermark( compositeUrl );
 				view.update( { result: watermarkedUrl, isGenerating: false } );
 			} catch ( err ) {
@@ -186,7 +300,7 @@ function App() {
 				} );
 			}
 		},
-		[ outside, inside, screenColor, interiorVisibility, useColumnGaps ]
+		[ outside, inside, screenColor, interiorVisibility ]
 	);
 
 	const handleExportVideo = useCallback(
@@ -205,12 +319,13 @@ function App() {
 					workingUrl,
 					corners: view.state.corners,
 					dividers: view.state.dividers,
+					beams: view.state.beams || [],
 					viewType,
 					screenColor,
 					interiorVisibility: isOutside
 						? undefined
 						: interiorVisibility,
-					useColumnGaps,
+					retractLevels: view.state.retractLevels || [],
 					onProgress: ( p ) => setRecordingProgress( p ),
 				} );
 				setVideoPreviewUrl( result.url );
@@ -225,7 +340,7 @@ function App() {
 				setRecordingProgress( 0 );
 			}
 		},
-		[ outside, inside, screenColor, interiorVisibility, useColumnGaps ]
+		[ outside, inside, screenColor, interiorVisibility ]
 	);
 
 	const canGenerateOutside =
@@ -237,34 +352,162 @@ function App() {
 		Array.isArray( inside.state.corners ) &&
 		inside.state.corners.length === 4;
 
-	const activeResult =
-		activeView === 'outside' ? outside.state.result : inside.state.result;
-	const activeIsGenerating =
-		activeView === 'outside'
-			? outside.state.isGenerating
-			: inside.state.isGenerating;
+	const activeViewObj = activeView === 'outside' ? outside : inside;
+	const activeIsGenerating = activeViewObj.state.isGenerating;
+	const activeResult = activeViewObj.state.result;
+	const activeRetractLevels = activeViewObj.state.retractLevels || [];
+
+	/**
+	 * Vertical Panel Slider Component
+	 */
+	const PanelSliders = ( { levels, onChange, view } ) => {
+		if ( ! activeResult || levels.length === 0 ) return null;
+
+		return (
+			<div className="sv-panel-sliders">
+				{ levels.map( ( level, idx ) => (
+					<div key={ idx } className="sv-panel-slider">
+						<span className="sv-panel-slider-label">
+							Panel { idx + 1 }
+						</span>
+						<div className="sv-panel-slider-track">
+							<input
+								type="range"
+								min="0"
+								max="100"
+								value={ Math.round( level * 100 ) }
+								onChange={ ( e ) => {
+									const newLevels = [ ...levels ];
+									newLevels[ idx ] = Number( e.target.value ) / 100;
+									onChange( view, newLevels );
+								} }
+								className="sv-panel-slider-input"
+								orient="vertical"
+							/>
+						</div>
+						<span className="sv-panel-slider-value">
+							{ Math.round( level * 100 ) }%
+						</span>
+					</div>
+				) ) }
+			</div>
+		);
+	};
+
+	const renderEditorPanel = ( view, viewType, onUpload, onClear ) => (
+		<div className="sv-editor-panel">
+			<div className="sv-editor-header">
+				<div className="sv-editor-header-left">
+					<div className="sv-editor-icon">
+						{ viewType === 'outside' ? (
+							<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
+								<path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z" />
+							</svg>
+						) : (
+							<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
+								<path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+							</svg>
+						) }
+					</div>
+					<div>
+						<h2 className="sv-editor-title">
+							{ viewType === 'outside' ? 'Exterior' : 'Interior' } Photo
+						</h2>
+						<p className="sv-editor-subtitle">
+							{ viewType === 'outside' ? 'View from outside' : 'View from inside' }
+						</p>
+					</div>
+				</div>
+				{ view.state.result && (
+					<span className="sv-ready-badge">
+						<svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 3 }>
+							<path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+						</svg>
+						Ready
+					</span>
+				) }
+			</div>
+
+			<div className="sv-editor-body">
+				<ImageUploader
+					onImageUpload={ onUpload }
+					onClearImage={ onClear }
+					currentImage={ view.state.image }
+					disabled={ view.state.isGenerating }
+					isProcessing={ view.state.image && ! view.state.workingUrl }
+				>
+					{ view.state.image && view.state.workingUrl && (
+						<OpeningSelector
+							imageUrl={ view.state.workingUrl }
+							onChange={ ( c, d, b ) => {
+								const panelCount = calcPanelCount( d || [], b || [] );
+								const newLevels = syncRetractLevels( view.state.retractLevels, panelCount );
+								view.update( {
+									corners: c,
+									dividers: d || [],
+									beams: b || [],
+									retractLevels: newLevels,
+								} );
+							} }
+							disabled={ view.state.isGenerating }
+							viewType={ viewType }
+						/>
+					) }
+				</ImageUploader>
+
+				{ view.state.image && (
+					<button
+						onClick={ () => handleGenerate( viewType ) }
+						className={ `sv-generate-btn ${
+							( viewType === 'outside' ? canGenerateOutside : canGenerateInside ) &&
+							! view.state.isGenerating &&
+							! view.state.result
+								? 'sv-generate-btn--active'
+								: ''
+						}` }
+						disabled={
+							! ( viewType === 'outside' ? canGenerateOutside : canGenerateInside ) ||
+							view.state.isGenerating
+						}
+					>
+						{ view.state.isGenerating ? (
+							<>
+								<div className="sv-spinner w-4 h-4 border-white/30 border-t-white" />
+								Applying screen…
+							</>
+						) : (
+							<>Generate { viewType === 'outside' ? 'Exterior' : 'Interior' } Preview</>
+						) }
+					</button>
+				) }
+
+				{ view.state.error && (
+					<div className="sv-error-msg">
+						<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
+							<path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+						</svg>
+						{ view.state.error }
+					</div>
+				) }
+			</div>
+		</div>
+	);
 
 	return (
 		<div className="screen-visualizer">
 			{ /* Header */ }
-			<div className="mb-8">
-				<h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-					Screen Visualizer
-				</h1>
-				<p className="text-slate-500 mt-1.5 text-sm max-w-xl">
-					Upload interior and exterior photos, mark your patio
-					opening, and preview how a custom motorized screen will look
-					on your home.
+			<div className="sv-header">
+				<h1 className="sv-header-title">Screen Visualizer</h1>
+				<p className="sv-header-desc">
+					Upload interior and exterior photos, mark your patio opening, and preview how a custom motorized screen will look on your home.
 				</p>
 			</div>
 
 			{ /* Settings Bar */ }
-			<div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8 p-5 bg-white rounded-2xl border border-slate-200 shadow-soft">
-				<div>
-					<label className="block text-sm font-semibold text-slate-800 mb-2.5">
-						Screen Frame Color
-					</label>
-					<div className="flex flex-wrap items-center gap-2.5">
+			<div className="sv-settings-bar">
+				<div className="sv-settings-group">
+					<label className="sv-settings-label">Screen Frame Color</label>
+					<div className="sv-color-swatches">
 						{ PRESET_COLORS.map( ( color ) => (
 							<button
 								key={ color.name }
@@ -272,12 +515,11 @@ function App() {
 									setScreenColor( color.name );
 									setIsCustomColor( false );
 								} }
-								className={ `w-9 h-9 rounded-full border-2 transition-all duration-200 shadow-sm ${
+								className={ `sv-swatch ${
 									! isCustomColor &&
-									screenColor.toLowerCase() ===
-										color.name.toLowerCase()
-										? 'border-brand-500 scale-110 ring-2 ring-brand-200'
-										: 'border-slate-200 hover:scale-105 hover:shadow-md'
+									screenColor.toLowerCase() === color.name.toLowerCase()
+										? 'sv-swatch--active'
+										: ''
 								}` }
 								style={ { backgroundColor: color.hex } }
 								title={ color.name }
@@ -286,582 +528,157 @@ function App() {
 						) ) }
 						<button
 							onClick={ () => setIsCustomColor( true ) }
-							className={ `px-3 py-1.5 text-xs font-semibold rounded-full border-2 transition-all duration-200 ${
-								isCustomColor
-									? 'border-brand-500 text-brand-700 bg-brand-50 ring-2 ring-brand-200'
-									: 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:shadow-sm'
+							className={ `sv-swatch-custom ${
+								isCustomColor ? 'sv-swatch-custom--active' : ''
 							}` }
 						>
 							Custom
 						</button>
 					</div>
 					{ isCustomColor && (
-						<div className="mt-3">
-							<input
-								id="screen-color"
-								type="text"
-								value={ screenColor }
-								onChange={ ( e ) =>
-									setScreenColor( e.target.value )
-								}
-								placeholder="e.g. #336699 or forest green"
-								className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-							/>
-						</div>
+						<input
+							type="text"
+							value={ screenColor }
+							onChange={ ( e ) => setScreenColor( e.target.value ) }
+							placeholder="e.g. #336699 or forest green"
+							className="sv-custom-input"
+						/>
 					) }
 				</div>
-				<div>
-					<label
-						htmlFor="interior-visibility"
-						className="block text-sm font-semibold text-slate-800 mb-2.5"
-					>
+				<div className="sv-settings-group">
+					<label htmlFor="interior-visibility" className="sv-settings-label">
 						Interior See-Through
 					</label>
 					<select
 						id="interior-visibility"
 						value={ interiorVisibility }
-						onChange={ ( e ) =>
-							setInteriorVisibility( Number( e.target.value ) )
-						}
-						className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+						onChange={ ( e ) => setInteriorVisibility( Number( e.target.value ) ) }
+						className="sv-select"
 					>
 						<option value={ 90 }>90% Visible (Light Tint)</option>
 						<option value={ 95 }>95% Visible (Barely There)</option>
 					</select>
 				</div>
-				<div>
-					<label className="block text-sm font-semibold text-slate-800 mb-2.5">
-						Multi-Panel Style
-					</label>
-					<label className="inline-flex items-center gap-2.5 cursor-pointer select-none">
-						<input
-							type="checkbox"
-							checked={ useColumnGaps }
-							onChange={ ( e ) =>
-								setUseColumnGaps( e.target.checked )
-							}
-							className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-						/>
-						<span className="text-sm text-slate-700">
-							Column gaps between panels
-						</span>
-					</label>
-					<p className="text-xs text-slate-400 mt-1.5">
-						Independent screens with structural columns
-					</p>
-				</div>
 			</div>
 
-			{ /* Main Content */ }
-			<div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-				{ /* Left Panel — Upload & Edit */ }
-				<div className="lg:col-span-5 space-y-5 max-h-[calc(100vh-8rem)] overflow-y-auto pr-1">
-					{ /* Exterior */ }
-					<div className="bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden transition-shadow duration-200 hover:shadow-card">
-						<div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-							<div className="flex items-center gap-2.5">
-								<div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center">
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										className="w-4 h-4 text-brand-600"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-										strokeWidth={ 2 }
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z"
-										/>
-									</svg>
-								</div>
-								<div>
-									<h2 className="text-sm font-bold text-slate-900">
-										Exterior Photo
-									</h2>
-									<p className="text-xs text-slate-400">
-										View from outside
-									</p>
-								</div>
-							</div>
-							{ outside.state.result && (
-								<span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 bg-brand-50 px-2.5 py-1 rounded-full border border-brand-100">
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										className="w-3 h-3"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-										strokeWidth={ 3 }
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											d="M4.5 12.75l6 6 9-13.5"
-										/>
-									</svg>
-									Ready
-								</span>
-							) }
-						</div>
-						<div className="p-5">
-							<ImageUploader
-								onImageUpload={ handleUploadOutside }
-								onClearImage={ handleClearOutside }
-								currentImage={ outside.state.image }
-								disabled={ outside.state.isGenerating }
-								isProcessing={
-									outside.state.image &&
-									! outside.state.workingUrl
-								}
-							>
-								{ outside.state.image &&
-									outside.state.workingUrl && (
-										<OpeningSelector
-											imageUrl={
-												outside.state.workingUrl
-											}
-											onChange={ ( c, d ) =>
-												outside.update( {
-													corners: c,
-													dividers: d || [],
-												} )
-											}
-											disabled={
-												outside.state.isGenerating
-											}
-											viewType="outside"
-										/>
-									) }
-							</ImageUploader>
-							{ outside.state.image && (
-								<button
-									onClick={ () =>
-										handleGenerate( 'outside' )
-									}
-									className={ `w-full mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed ${
-										canGenerateOutside &&
-										! outside.state.isGenerating &&
-										! outside.state.result
-											? 'shadow-lg hover:shadow-xl ring-2 ring-brand-300/50'
-											: ''
-									}` }
-									disabled={
-										! canGenerateOutside ||
-										outside.state.isGenerating
-									}
-								>
-									{ outside.state.isGenerating ? (
-										<>
-											<div className="sv-spinner w-4 h-4 border-white/30 border-t-white" />
-											Applying screen…
-										</>
-									) : (
-										<>Generate Exterior Preview</>
-									) }
-								</button>
-							) }
-							{ outside.state.error && (
-								<div className="mt-3 flex items-start gap-2 text-red-700 text-xs bg-red-50 px-3 py-2.5 rounded-lg border border-red-100">
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										className="w-4 h-4 shrink-0 mt-0.5"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-										strokeWidth={ 2 }
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-										/>
-									</svg>
-									{ outside.state.error }
-								</div>
-							) }
-						</div>
-					</div>
-
-					{ /* Interior */ }
-					<div className="bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden transition-shadow duration-200 hover:shadow-card">
-						<div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-							<div className="flex items-center gap-2.5">
-								<div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center">
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										className="w-4 h-4 text-brand-600"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-										strokeWidth={ 2 }
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"
-										/>
-									</svg>
-								</div>
-								<div>
-									<h2 className="text-sm font-bold text-slate-900">
-										Interior Photo
-									</h2>
-									<p className="text-xs text-slate-400">
-										View from inside
-									</p>
-								</div>
-							</div>
-							{ inside.state.result && (
-								<span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 bg-brand-50 px-2.5 py-1 rounded-full border border-brand-100">
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										className="w-3 h-3"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-										strokeWidth={ 3 }
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											d="M4.5 12.75l6 6 9-13.5"
-										/>
-									</svg>
-									Ready
-								</span>
-							) }
-						</div>
-						<div className="p-5">
-							<ImageUploader
-								onImageUpload={ handleUploadInside }
-								onClearImage={ handleClearInside }
-								currentImage={ inside.state.image }
-								disabled={ inside.state.isGenerating }
-								isProcessing={
-									inside.state.image &&
-									! inside.state.workingUrl
-								}
-							>
-								{ inside.state.image &&
-									inside.state.workingUrl && (
-										<OpeningSelector
-											imageUrl={ inside.state.workingUrl }
-											onChange={ ( c, d ) =>
-												inside.update( {
-													corners: c,
-													dividers: d || [],
-												} )
-											}
-											disabled={
-												inside.state.isGenerating
-											}
-											viewType="inside"
-										/>
-									) }
-							</ImageUploader>
-							{ inside.state.image && (
-								<button
-									onClick={ () => handleGenerate( 'inside' ) }
-									className={ `w-full mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed ${
-										canGenerateInside &&
-										! inside.state.isGenerating &&
-										! inside.state.result
-											? 'shadow-lg hover:shadow-xl ring-2 ring-brand-300/50'
-											: ''
-									}` }
-									disabled={
-										! canGenerateInside ||
-										inside.state.isGenerating
-									}
-								>
-									{ inside.state.isGenerating ? (
-										<>
-											<div className="sv-spinner w-4 h-4 border-white/30 border-t-white" />
-											Applying screen…
-										</>
-									) : (
-										<>Generate Interior Preview</>
-									) }
-								</button>
-							) }
-							{ inside.state.error && (
-								<div className="mt-3 flex items-start gap-2 text-red-700 text-xs bg-red-50 px-3 py-2.5 rounded-lg border border-red-100">
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										className="w-4 h-4 shrink-0 mt-0.5"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-										strokeWidth={ 2 }
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-										/>
-									</svg>
-									{ inside.state.error }
-								</div>
-							) }
-						</div>
-					</div>
+			{ /* Tabbed Content */ }
+			<div className="sv-tabbed-content">
+				{ /* Tab Switcher */ }
+				<div className="sv-tab-bar">
+					<button
+						onClick={ () => setActiveView( 'outside' ) }
+						className={ `sv-tab ${ activeView === 'outside' ? 'sv-tab--active' : '' }` }
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
+							<path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z" />
+						</svg>
+						Exterior
+					</button>
+					<button
+						onClick={ () => setActiveView( 'inside' ) }
+						className={ `sv-tab ${ activeView === 'inside' ? 'sv-tab--active' : '' }` }
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
+							<path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+						</svg>
+						Interior
+					</button>
 				</div>
 
-				{ /* Right Panel — Preview */ }
-				<div className="lg:col-span-7">
-					<div className="sticky top-6 max-h-[calc(100vh-6rem)] flex flex-col">
-						{ /* Tab Switcher */ }
-						<div className="flex items-center gap-1 mb-4 p-1 bg-white rounded-xl border border-slate-200 shadow-soft inline-flex">
-							<button
-								onClick={ () => setActiveView( 'outside' ) }
-								className={ `inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-									activeView === 'outside'
-										? 'bg-slate-900 text-white shadow-sm'
-										: 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-								}` }
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									className="w-4 h-4"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-									strokeWidth={ 2 }
-								>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z"
-									/>
-								</svg>
-								Exterior
-							</button>
-							<button
-								onClick={ () => setActiveView( 'inside' ) }
-								className={ `inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-									activeView === 'inside'
-										? 'bg-slate-900 text-white shadow-sm'
-										: 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-								}` }
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									className="w-4 h-4"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-									strokeWidth={ 2 }
-								>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"
-									/>
-								</svg>
-								Interior
-							</button>
-						</div>
+				{ /* Tab Content */ }
+				<div className="sv-tab-content">
+					{ /* Editor Panel */ }
+					<div className="sv-editor-col">
+						{ activeView === 'outside'
+							? renderEditorPanel( outside, 'outside', handleUploadOutside, handleClearOutside )
+							: renderEditorPanel( inside, 'inside', handleUploadInside, handleClearInside )
+						}
+					</div>
 
-						{ /* Preview Stage */ }
-						<div className="flex-1 bg-slate-100 rounded-2xl border border-slate-200 min-h-[320px] flex items-center justify-center shadow-inner overflow-y-auto">
+					{ /* Preview Panel */ }
+					<div className="sv-preview-col">
+						<div className="sv-preview-stage">
 							{ activeIsGenerating ? (
-								<div className="flex flex-col items-center gap-3 py-24">
+								<div className="sv-preview-empty">
 									<div className="sv-spinner w-10 h-10" />
-									<p className="text-sm text-slate-600 font-medium">
-										Applying screen overlay…
-									</p>
-									<p className="text-xs text-slate-400">
-										This may take a few seconds
-									</p>
+									<p className="sv-preview-empty-text">Applying screen overlay…</p>
+									<p className="sv-preview-empty-sub">This may take a few seconds</p>
 								</div>
 							) : activeResult ? (
-								<div className="w-full relative">
-									<img
-										src={ activeResult }
-										className="w-full h-full object-contain"
-										alt={ `${
-											activeView === 'outside'
-												? 'Exterior'
-												: 'Interior'
-										} screen preview` }
+								<>
+									<div className="sv-preview-image-wrap">
+										<img
+											src={ activeResult }
+											className="sv-preview-image"
+											alt={ `${ activeView === 'outside' ? 'Exterior' : 'Interior' } screen preview` }
+										/>
+									</div>
+									<PanelSliders
+										levels={ activeRetractLevels }
+										onChange={ handleRetractChange }
+										view={ activeView }
 									/>
-								</div>
+								</>
 							) : (
-								<div className="text-center py-24 px-6">
-									<div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mx-auto mb-4 shadow-soft">
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											className="w-8 h-8 text-slate-300"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-											strokeWidth={ 1.5 }
-										>
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z"
-											/>
+								<div className="sv-preview-empty">
+									<div className="sv-preview-empty-icon">
+										<svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 1.5 }>
+											<path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z" />
 										</svg>
 									</div>
-									<p className="text-slate-500 text-sm font-medium">
+									<p className="sv-preview-empty-text">
 										{ activeView === 'outside'
 											? 'Upload an exterior photo and generate a preview'
 											: 'Upload an interior photo and generate a preview' }
 									</p>
-									<p className="text-slate-400 text-xs mt-1">
-										Drag the corner pins to match your
-										opening, then click Generate
+									<p className="sv-preview-empty-sub">
+										Drag the corner pins to match your opening, then click Generate
 									</p>
 								</div>
 							) }
 						</div>
 
-						<div className="flex-shrink-0">
-							{ /* Download + Export Video */ }
-							{ activeView === 'outside' && outside.state.result && (
-							<div className="mt-4 flex justify-end gap-3">
-								{ isRecording && activeView === 'outside' ? (
-									<div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+						{ /* Action Buttons */ }
+						{ activeResult && (
+							<div className="sv-preview-actions">
+								{ isRecording ? (
+									<div className="sv-recording-status">
 										<div className="sv-spinner w-4 h-4" />
-										Recording…{ ' ' }
-										{ Math.round(
-											recordingProgress * 100
-										) }
-										%
+										Recording… { Math.round( recordingProgress * 100 ) }%
 									</div>
 								) : (
 									<button
-										onClick={ () =>
-											handleExportVideo( 'outside' )
-										}
+										onClick={ () => handleExportVideo( activeView ) }
 										disabled={ isRecording }
-										className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 hover:border-slate-300 transition shadow-soft disabled:opacity-50 disabled:cursor-not-allowed"
+										className="sv-action-btn sv-action-btn--secondary"
 									>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											className="w-4 h-4"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-											strokeWidth={ 2 }
-										>
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"
-											/>
+										<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
+											<path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
 										</svg>
 										Export Video
 									</button>
 								) }
 								<button
-									onClick={ () =>
-										downloadImage(
-											outside.state.result,
-											'exterior-mockup.png'
-										)
-									}
-									className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 hover:border-slate-300 transition shadow-soft"
+									onClick={ () => downloadImage( activeResult, `${ activeView }-mockup.png` ) }
+									className="sv-action-btn sv-action-btn--primary"
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										className="w-4 h-4"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-										strokeWidth={ 2 }
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 12.75l3-3m0 0l-3-3m3 3H9"
-											transform="rotate(180 12 12)"
-										/>
+									<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
+										<path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 12.75l3-3m0 0l-3-3m3 3H9" transform="rotate(180 12 12)" />
 									</svg>
-									Download Exterior
+									Download { activeView === 'outside' ? 'Exterior' : 'Interior' }
 								</button>
 							</div>
 						) }
-						{ activeView === 'inside' && inside.state.result && (
-							<div className="mt-4 flex justify-end gap-3">
-								{ isRecording && activeView === 'inside' ? (
-									<div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-										<div className="sv-spinner w-4 h-4" />
-										Recording…{ ' ' }
-										{ Math.round(
-											recordingProgress * 100
-										) }
-										%
-									</div>
-								) : (
-									<button
-										onClick={ () =>
-											handleExportVideo( 'inside' )
-										}
-										disabled={ isRecording }
-										className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 hover:border-slate-300 transition shadow-soft disabled:opacity-50 disabled:cursor-not-allowed"
-									>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											className="w-4 h-4"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-											strokeWidth={ 2 }
-										>
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"
-											/>
-										</svg>
-										Export Video
-									</button>
-								) }
-								<button
-									onClick={ () =>
-										downloadImage(
-											inside.state.result,
-											'interior-mockup.png'
-										)
-									}
-									className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 hover:border-slate-300 transition shadow-soft"
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										className="w-4 h-4"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-										strokeWidth={ 2 }
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 12.75l3-3m0 0l-3-3m3 3H9"
-											transform="rotate(180 12 12)"
-										/>
-									</svg>
-									Download Interior
-								</button>
-							</div>
-						) }
-						</div>
 					</div>
 				</div>
 			</div>
 
 			{ /* Video Preview Modal */ }
 			{ videoPreviewUrl && (
-				<div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4">
-					<div className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
-						<div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
-							<h4 className="text-sm font-semibold text-slate-900">
-								Video Preview
-							</h4>
+				<div className="sv-modal-overlay">
+					<div className="sv-modal">
+						<div className="sv-modal-header">
+							<h4 className="sv-modal-title">Video Preview</h4>
 							<button
 								type="button"
 								onClick={ () => {
@@ -869,23 +686,21 @@ function App() {
 									setVideoPreviewUrl( null );
 									setVideoPreviewFilename( '' );
 								} }
-								className="text-slate-400 hover:text-slate-700 text-sm transition-colors"
+								className="sv-modal-close"
 							>
 								Close
 							</button>
 						</div>
-
-						<div className="bg-black">
+						<div className="sv-modal-video">
 							<video
 								src={ videoPreviewUrl }
-								className="w-full max-h-[60vh]"
+								className="sv-modal-video-player"
 								controls
 								autoPlay
 								playsInline
 							/>
 						</div>
-
-						<div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-slate-100">
+						<div className="sv-modal-footer">
 							<button
 								type="button"
 								onClick={ () => {
@@ -893,7 +708,7 @@ function App() {
 									setVideoPreviewUrl( null );
 									setVideoPreviewFilename( '' );
 								} }
-								className="inline-flex items-center px-3 py-2 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition"
+								className="sv-modal-btn sv-modal-btn--secondary"
 							>
 								Close
 							</button>
@@ -907,22 +722,10 @@ function App() {
 									a.click();
 									document.body.removeChild( a );
 								} }
-								className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-brand-600 text-white hover:bg-brand-700 transition"
+								className="sv-modal-btn sv-modal-btn--primary"
 							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									className="w-3.5 h-3.5"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-									strokeWidth={ 2 }
-								>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 12.75l3-3m0 0l-3-3m3 3H9"
-										transform="rotate(180 12 12)"
-									/>
+								<svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
+									<path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 12.75l3-3m0 0l-3-3m3 3H9" transform="rotate(180 12 12)" />
 								</svg>
 								Download Video
 							</button>

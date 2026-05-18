@@ -46,16 +46,44 @@ const renderFrame = (
 	ctx.clearRect( 0, 0, width, height );
 	ctx.drawImage( baseImg, 0, 0, width, height );
 
+	// Build retractLevels array from single retractLevel for video animation
+	const panelCount = Math.max(
+		1,
+		( params.dividers || [] ).length +
+			( params.beams || [] ).length * 0 +
+			1
+	);
+	// Recalculate panel count properly
+	const sortedDivs = [ ...( params.dividers || [] ) ].sort( ( a, b ) => a - b );
+	const sortedBeams = [ ...( params.beams || [] ) ].sort( ( a, b ) => a.left - b.left );
+	const allBoundaries = [ 0, ...sortedDivs ];
+	sortedBeams.forEach( ( beam ) => {
+		allBoundaries.push( beam.left );
+		allBoundaries.push( beam.right );
+	} );
+	allBoundaries.push( 1 );
+	allBoundaries.sort( ( a, b ) => a - b );
+	let count = 0;
+	for ( let i = 0; i < allBoundaries.length - 1; i++ ) {
+		const tLeft = allBoundaries[ i ];
+		const tRight = allBoundaries[ i + 1 ];
+		const isBeamGap = sortedBeams.some(
+			( beam ) => tLeft >= beam.left - 0.001 && tRight <= beam.right + 0.001
+		);
+		if ( ! isBeamGap ) count++;
+	}
+	const retractLevels = Array( Math.max( 1, count ) ).fill( retractLevel );
+
 	renderScreenOverlay( {
 		width,
 		height,
 		corners: params.corners,
 		dividers: params.dividers,
+		beams: params.beams || [],
 		viewType: params.viewType,
 		screenColor: params.screenColor,
 		interiorVisibility: params.interiorVisibility,
-		useColumnGaps: params.useColumnGaps,
-		retractLevel,
+		retractLevels,
 		targetCanvas: overlayCanvas,
 	} );
 

@@ -1,17 +1,17 @@
 /**
  * OpeningSelector - Canvas-based polygon editor for patio opening selection.
  *
- * Mobile-friendly: 4 pins pre-placed as a centered rectangle on image load.
- * User drags each pin to the correct corner.
- *
- * Split feature: "Add Split" inserts a vertical divider creating multi-panel screens.
- * Dividers are draggable horizontally. Each split adds another panel.
+ * Supports splits (single dividers) and beams (structural gaps with independent edges).
+ * Beams use {left, right} structure for independent edge control.
  */
 import { useState, useEffect, useRef, useCallback } from '@wordpress/element';
 
 const PIN_RADIUS = 10;
 const PIN_HIT_RADIUS = 20;
-const DIVIDER_HIT_DIST = 12;
+const SPLIT_HIT_DIST = 12;
+const BEAM_EDGE_HIT_DIST = 14;
+const DEFAULT_BEAM_LEFT = 0.47;
+const DEFAULT_BEAM_RIGHT = 0.53;
 
 // Linear interpolation between two points at fraction t
 const lerp = ( p1, p2, t ) => ( {
@@ -66,16 +66,17 @@ const OpeningSelector = ( {
 	const containerRef = useRef( null );
 	const [ imgSize, setImgSize ] = useState( { width: 0, height: 0 } );
 	const [ pins, setPins ] = useState( [] );
-	const [ dividers, setDividers ] = useState( [] ); // array of fractions 0-1 (sorted)
-	const [ dragging, setDragging ] = useState( null ); // { type: 'pin'|'divider', index }
+	const [ dividers, setDividers ] = useState( [] );
+	const [ beams, setBeams ] = useState( [] ); // {left, right}
+	const [ dragging, setDragging ] = useState( null ); // { type: 'pin'|'split'|'beamLeft'|'beamRight', index }
 	const imageRef = useRef( null );
 	const onChangeRef = useRef( onChange );
 	onChangeRef.current = onChange;
 
 	// Emit changes to parent
-	const emitChange = useCallback( ( newPins, newDividers ) => {
+	const emitChange = useCallback( ( newPins, newDividers, newBeams ) => {
 		if ( newPins.length === 4 ) {
-			onChangeRef.current( newPins, newDividers || [] );
+			onChangeRef.current( newPins, newDividers || [], newBeams || [] );
 		}
 	}, [] );
 
@@ -94,7 +95,6 @@ const OpeningSelector = ( {
 			const height = width / aspect;
 			setImgSize( { width, height } );
 
-			// Auto-place 4 pins as a centered rectangle
 			const defaultPins = [
 				{ x: 25, y: 15, label: 'TL' },
 				{ x: 75, y: 15, label: 'TR' },
@@ -103,7 +103,8 @@ const OpeningSelector = ( {
 			];
 			setPins( defaultPins );
 			setDividers( [] );
-			onChangeRef.current( defaultPins, [] );
+			setBeams( [] );
+			onChangeRef.current( defaultPins, [], [] );
 		};
 		img.src = imageUrl;
 		return () => {
@@ -145,8 +146,6 @@ const OpeningSelector = ( {
 			y: ( pin.y / 100 ) * H,
 		} ) );
 
-		// TL=0, TR=1, BR=2, BL=3
-
 		// Draw polygon outline
 		ctx.save();
 		ctx.beginPath();
@@ -156,48 +155,122 @@ const OpeningSelector = ( {
 		} );
 		ctx.closePath();
 		ctx.strokeStyle = '#339966';
-		ctx.lineWidth = 2;
+		ctx.lineWidth = 2.5;
 		ctx.setLineDash( [] );
 		ctx.stroke();
-		ctx.fillStyle = 'rgba(51, 153, 102, 0.06)';
+		ctx.fillStyle = 'rgba(51, 153, 102, 0.04)';
 		ctx.fill();
 		ctx.restore();
 
-		// Draw divider lines
+		// Draw split lines (amber/yellow)
 		const sortedDivs = [ ...dividers ].sort( ( a, b ) => a - b );
 		sortedDivs.forEach( ( t, idx ) => {
 			const top = lerp( p[ 0 ], p[ 1 ], t );
 			const bottom = lerp( p[ 3 ], p[ 2 ], t );
 			const isDraggingThis =
-				dragging?.type === 'divider' && dragging.index === idx;
+				dragging?.type === 'split' && dragging.index === idx;
 
-			// Dashed guide line
 			ctx.save();
 			ctx.beginPath();
 			ctx.moveTo( top.x, top.y );
 			ctx.lineTo( bottom.x, bottom.y );
 			ctx.strokeStyle = isDraggingThis ? '#dc2626' : '#f59e0b';
-			ctx.lineWidth = isDraggingThis ? 3 : 2;
+			ctx.lineWidth = isDraggingThis ? 3 : 2.5;
+			ctx.setLineDash( [ 8, 5 ] );
+			ctx.stroke();
+			ctx.restore();
+
+			const mid = lerp( top, bottom, 0.5 );
+			ctx.beginPath();
+			ctx.arc( mid.x, mid.y, 8, 0, Math.PI * 2 );
+			ctx.fillStyle = isDraggingThis ? '#dc2626' : '#f59e0b';
+			ctx.fill();
+			ctx.strokeStyle = '#fff';
+			ctx.lineWidth = 2.5;
+			ctx.stroke();
+
+			ctx.fillStyle = '#fff';
+			ctx.font = 'bold 10px sans-serif';
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'middle';
+			ctx.fillText( '⇔', mid.x, mid.y );
+		} );
+
+		// Draw beam lines (coral/red double lines with independent handles)
+		const sortedBeams = [ ...beams ].sort( ( a, b ) => a.left - b.left );
+		sortedBeams.forEach( ( beam, idx ) => {
+			const leftTop = lerp( p[ 0 ], p[ 1 ], beam.left );
+			const leftBot = lerp( p[ 3 ], p[ 2 ], beam.left );
+			const rightTop = lerp( p[ 0 ], p[ 1 ], beam.right );
+			const rightBot = lerp( p[ 3 ], p[ 2 ], beam.right );
+			const isDraggingLeft =
+				dragging?.type === 'beamLeft' && dragging.index === idx;
+			const isDraggingRight =
+				dragging?.type === 'beamRight' && dragging.index === idx;
+
+			// Left beam edge
+			ctx.save();
+			ctx.beginPath();
+			ctx.moveTo( leftTop.x, leftTop.y );
+			ctx.lineTo( leftBot.x, leftBot.y );
+			ctx.strokeStyle = isDraggingLeft ? '#dc2626' : '#ef4444';
+			ctx.lineWidth = isDraggingLeft ? 3 : 2.5;
 			ctx.setLineDash( [ 6, 4 ] );
 			ctx.stroke();
 			ctx.restore();
 
-			// Grab handle (circle in the middle)
-			const mid = lerp( top, bottom, 0.5 );
+			// Right beam edge
+			ctx.save();
 			ctx.beginPath();
-			ctx.arc( mid.x, mid.y, 7, 0, Math.PI * 2 );
-			ctx.fillStyle = isDraggingThis ? '#dc2626' : '#f59e0b';
+			ctx.moveTo( rightTop.x, rightTop.y );
+			ctx.lineTo( rightBot.x, rightBot.y );
+			ctx.strokeStyle = isDraggingRight ? '#dc2626' : '#ef4444';
+			ctx.lineWidth = isDraggingRight ? 3 : 2.5;
+			ctx.setLineDash( [ 6, 4 ] );
+			ctx.stroke();
+			ctx.restore();
+
+			// Beam gap indicator
+			ctx.save();
+			ctx.beginPath();
+			ctx.moveTo( leftTop.x, leftTop.y );
+			ctx.lineTo( rightTop.x, rightTop.y );
+			ctx.lineTo( rightBot.x, rightBot.y );
+			ctx.lineTo( leftBot.x, leftBot.y );
+			ctx.closePath();
+			ctx.fillStyle = 'rgba(239, 68, 68, 0.06)';
+			ctx.fill();
+			ctx.restore();
+
+			// Left edge handle
+			const leftMid = lerp( leftTop, leftBot, 0.5 );
+			ctx.beginPath();
+			ctx.arc( leftMid.x, leftMid.y, 8, 0, Math.PI * 2 );
+			ctx.fillStyle = isDraggingLeft ? '#dc2626' : '#ef4444';
 			ctx.fill();
 			ctx.strokeStyle = '#fff';
-			ctx.lineWidth = 2;
+			ctx.lineWidth = 2.5;
 			ctx.stroke();
-
-			// Left/right arrows icon
 			ctx.fillStyle = '#fff';
 			ctx.font = 'bold 9px sans-serif';
 			ctx.textAlign = 'center';
 			ctx.textBaseline = 'middle';
-			ctx.fillText( '⇔', mid.x, mid.y );
+			ctx.fillText( '◀', leftMid.x, leftMid.y );
+
+			// Right edge handle
+			const rightMid = lerp( rightTop, rightBot, 0.5 );
+			ctx.beginPath();
+			ctx.arc( rightMid.x, rightMid.y, 8, 0, Math.PI * 2 );
+			ctx.fillStyle = isDraggingRight ? '#dc2626' : '#ef4444';
+			ctx.fill();
+			ctx.strokeStyle = '#fff';
+			ctx.lineWidth = 2.5;
+			ctx.stroke();
+			ctx.fillStyle = '#fff';
+			ctx.font = 'bold 9px sans-serif';
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'middle';
+			ctx.fillText( '▶', rightMid.x, rightMid.y );
 		} );
 
 		// Draw pin circles
@@ -221,7 +294,7 @@ const OpeningSelector = ( {
 			ctx.textBaseline = 'middle';
 			ctx.fillText( pin.label, x, y );
 		} );
-	}, [ imgSize, pins, dividers, dragging ] );
+	}, [ imgSize, pins, dividers, beams, dragging ] );
 
 	// ── Mouse / touch handlers ────────────────────────────────────────
 
@@ -243,7 +316,7 @@ const OpeningSelector = ( {
 				y: ( pin.y / 100 ) * height,
 			} ) );
 
-			// 1. Check pins first (highest priority)
+			// 1. Check pins first
 			for ( let i = 0; i < 4; i++ ) {
 				if (
 					Math.hypot( pos.x - p[ i ].x, pos.y - p[ i ].y ) <=
@@ -254,27 +327,52 @@ const OpeningSelector = ( {
 				}
 			}
 
-			// 2. Check dividers
+			// 2. Check beam edges (left and right separately)
+			const sortedBeams = [ ...beams ].sort(
+				( a, b ) => a.left - b.left
+			);
+			for ( let i = 0; i < sortedBeams.length; i++ ) {
+				const beam = sortedBeams[ i ];
+				const leftTop = lerp( p[ 0 ], p[ 1 ], beam.left );
+				const leftBot = lerp( p[ 3 ], p[ 2 ], beam.left );
+				const rightTop = lerp( p[ 0 ], p[ 1 ], beam.right );
+				const rightBot = lerp( p[ 3 ], p[ 2 ], beam.right );
+
+				const leftDist = pointToSegDist(
+					pos.x, pos.y,
+					leftTop.x, leftTop.y, leftBot.x, leftBot.y
+				);
+				if ( leftDist <= BEAM_EDGE_HIT_DIST ) {
+					setDragging( { type: 'beamLeft', index: i } );
+					return;
+				}
+
+				const rightDist = pointToSegDist(
+					pos.x, pos.y,
+					rightTop.x, rightTop.y, rightBot.x, rightBot.y
+				);
+				if ( rightDist <= BEAM_EDGE_HIT_DIST ) {
+					setDragging( { type: 'beamRight', index: i } );
+					return;
+				}
+			}
+
+			// 3. Check splits
 			const sortedDivs = [ ...dividers ].sort( ( a, b ) => a - b );
 			for ( let i = 0; i < sortedDivs.length; i++ ) {
 				const t = sortedDivs[ i ];
 				const top = lerp( p[ 0 ], p[ 1 ], t );
 				const bottom = lerp( p[ 3 ], p[ 2 ], t );
 				const dist = pointToSegDist(
-					pos.x,
-					pos.y,
-					top.x,
-					top.y,
-					bottom.x,
-					bottom.y
+					pos.x, pos.y, top.x, top.y, bottom.x, bottom.y
 				);
-				if ( dist <= DIVIDER_HIT_DIST ) {
-					setDragging( { type: 'divider', index: i } );
+				if ( dist <= SPLIT_HIT_DIST ) {
+					setDragging( { type: 'split', index: i } );
 					return;
 				}
 			}
 		},
-		[ disabled, pins, dividers, imgSize ]
+		[ disabled, pins, dividers, beams, imgSize ]
 	);
 
 	const handleMouseMove = useCallback(
@@ -285,14 +383,8 @@ const OpeningSelector = ( {
 			const { width, height } = imgSize;
 
 			if ( dragging.type === 'pin' ) {
-				const clampedX = Math.max(
-					0,
-					Math.min( 100, pct( pos.x, width ) )
-				);
-				const clampedY = Math.max(
-					0,
-					Math.min( 100, pct( pos.y, height ) )
-				);
+				const clampedX = Math.max( 0, Math.min( 100, pct( pos.x, width ) ) );
+				const clampedY = Math.max( 0, Math.min( 100, pct( pos.y, height ) ) );
 				const newPins = [ ...pins ];
 				newPins[ dragging.index ] = {
 					...newPins[ dragging.index ],
@@ -300,33 +392,124 @@ const OpeningSelector = ( {
 					y: clampedY,
 				};
 				setPins( newPins );
-				emitChange( newPins, dividers );
+				emitChange( newPins, dividers, beams );
 			}
 
-			if ( dragging.type === 'divider' ) {
+			if ( dragging.type === 'split' ) {
 				const p = pins.map( ( pin ) => ( {
 					x: ( pin.x / 100 ) * width,
 					y: ( pin.y / 100 ) * height,
 				} ) );
-				// Project cursor onto TL→TR line to get fraction
 				let t = projectToFraction( pos.x, pos.y, p[ 0 ], p[ 1 ] );
-				t = Math.max( 0.05, Math.min( 0.95, t ) );
 
-				// Prevent crossing other dividers (maintain minimum gap of 0.05)
 				const sortedDivs = [ ...dividers ].sort( ( a, b ) => a - b );
 				const origIdx = dragging.index;
-				if ( origIdx > 0 )
-					t = Math.max( t, sortedDivs[ origIdx - 1 ] + 0.05 );
-				if ( origIdx < sortedDivs.length - 1 )
-					t = Math.min( t, sortedDivs[ origIdx + 1 ] - 0.05 );
+				const staticBoundaries = [
+					0,
+					...sortedDivs.filter( ( _, i ) => i !== origIdx ),
+					...beams.map( ( b ) => b.left ),
+					...beams.map( ( b ) => b.right ),
+					1,
+				].sort( ( a, b ) => a - b );
+
+				for ( let i = 0; i < staticBoundaries.length - 1; i++ ) {
+					if ( t >= staticBoundaries[ i ] && t <= staticBoundaries[ i + 1 ] ) {
+						t = Math.max(
+							staticBoundaries[ i ] + 0.03,
+							Math.min( staticBoundaries[ i + 1 ] - 0.03, t )
+						);
+						break;
+					}
+				}
+				t = Math.max( 0.03, Math.min( 0.97, t ) );
 
 				const newDividers = [ ...sortedDivs ];
 				newDividers[ origIdx ] = t;
 				setDividers( newDividers );
-				emitChange( pins, newDividers );
+				emitChange( pins, newDividers, beams );
+			}
+
+			if ( dragging.type === 'beamLeft' ) {
+				const p = pins.map( ( pin ) => ( {
+					x: ( pin.x / 100 ) * width,
+					y: ( pin.y / 100 ) * height,
+				} ) );
+				let t = projectToFraction( pos.x, pos.y, p[ 0 ], p[ 1 ] );
+
+				const sortedBeams = [ ...beams ].sort( ( a, b ) => a.left - b.left );
+				const origIdx = dragging.index;
+				const beam = sortedBeams[ origIdx ];
+				const staticBoundaries = [
+					0,
+					...dividers,
+					...sortedBeams
+						.filter( ( _, i ) => i !== origIdx )
+						.map( ( b ) => b.left ),
+					...sortedBeams
+						.filter( ( _, i ) => i !== origIdx )
+						.map( ( b ) => b.right ),
+					beam.right, // can't cross own right edge
+					1,
+				].sort( ( a, b ) => a - b );
+
+				for ( let i = 0; i < staticBoundaries.length - 1; i++ ) {
+					if ( t >= staticBoundaries[ i ] && t <= staticBoundaries[ i + 1 ] ) {
+						t = Math.max(
+							staticBoundaries[ i ] + 0.03,
+							Math.min( staticBoundaries[ i + 1 ] - 0.03, t )
+						);
+						break;
+					}
+				}
+				t = Math.max( 0.03, Math.min( beam.right - 0.03, t ) );
+
+				const newBeams = [ ...sortedBeams ];
+				newBeams[ origIdx ] = { ...beam, left: t };
+				setBeams( newBeams );
+				emitChange( pins, dividers, newBeams );
+			}
+
+			if ( dragging.type === 'beamRight' ) {
+				const p = pins.map( ( pin ) => ( {
+					x: ( pin.x / 100 ) * width,
+					y: ( pin.y / 100 ) * height,
+				} ) );
+				let t = projectToFraction( pos.x, pos.y, p[ 0 ], p[ 1 ] );
+
+				const sortedBeams = [ ...beams ].sort( ( a, b ) => a.left - b.left );
+				const origIdx = dragging.index;
+				const beam = sortedBeams[ origIdx ];
+				const staticBoundaries = [
+					0,
+					...dividers,
+					...sortedBeams
+						.filter( ( _, i ) => i !== origIdx )
+						.map( ( b ) => b.left ),
+					...sortedBeams
+						.filter( ( _, i ) => i !== origIdx )
+						.map( ( b ) => b.right ),
+					beam.left, // can't cross own left edge
+					1,
+				].sort( ( a, b ) => a - b );
+
+				for ( let i = 0; i < staticBoundaries.length - 1; i++ ) {
+					if ( t >= staticBoundaries[ i ] && t <= staticBoundaries[ i + 1 ] ) {
+						t = Math.max(
+							staticBoundaries[ i ] + 0.03,
+							Math.min( staticBoundaries[ i + 1 ] - 0.03, t )
+						);
+						break;
+					}
+				}
+				t = Math.max( beam.left + 0.03, Math.min( 0.97, t ) );
+
+				const newBeams = [ ...sortedBeams ];
+				newBeams[ origIdx ] = { ...beam, right: t };
+				setBeams( newBeams );
+				emitChange( pins, dividers, newBeams );
 			}
 		},
-		[ dragging, pins, dividers, imgSize, emitChange ]
+		[ dragging, pins, dividers, beams, imgSize, emitChange ]
 	);
 
 	const handleMouseUp = useCallback( ( e ) => {
@@ -337,33 +520,79 @@ const OpeningSelector = ( {
 	// ── Button handlers ───────────────────────────────────────────────
 
 	const handleAddSplit = useCallback( () => {
-		// Find the largest gap and insert a divider at its midpoint
-		const sorted = [ ...dividers, 0, 1 ].sort( ( a, b ) => a - b );
+		const allBoundaries = [
+			0,
+			...dividers,
+			...beams.map( ( b ) => b.left ),
+			...beams.map( ( b ) => b.right ),
+			1,
+		].sort( ( a, b ) => a - b );
 		let maxGap = 0,
 			maxIdx = 0;
-		for ( let i = 0; i < sorted.length - 1; i++ ) {
-			const gap = sorted[ i + 1 ] - sorted[ i ];
+		for ( let i = 0; i < allBoundaries.length - 1; i++ ) {
+			const gap = allBoundaries[ i + 1 ] - allBoundaries[ i ];
 			if ( gap > maxGap ) {
 				maxGap = gap;
 				maxIdx = i;
 			}
 		}
-		const newT = ( sorted[ maxIdx ] + sorted[ maxIdx + 1 ] ) / 2;
+		const newT =
+			( allBoundaries[ maxIdx ] + allBoundaries[ maxIdx + 1 ] ) / 2;
 		const newDividers = [ ...dividers, newT ].sort( ( a, b ) => a - b );
 		setDividers( newDividers );
-		emitChange( pins, newDividers );
-	}, [ dividers, pins, emitChange ] );
+		emitChange( pins, newDividers, beams );
+	}, [ dividers, beams, pins, emitChange ] );
+
+	const handleAddBeam = useCallback( () => {
+		const allBoundaries = [
+			0,
+			...dividers,
+			...beams.map( ( b ) => b.left ),
+			...beams.map( ( b ) => b.right ),
+			1,
+		].sort( ( a, b ) => a - b );
+		let maxGap = 0,
+			maxIdx = 0;
+		for ( let i = 0; i < allBoundaries.length - 1; i++ ) {
+			const gap = allBoundaries[ i + 1 ] - allBoundaries[ i ];
+			if ( gap > maxGap ) {
+				maxGap = gap;
+				maxIdx = i;
+			}
+		}
+		const centerT =
+			( allBoundaries[ maxIdx ] + allBoundaries[ maxIdx + 1 ] ) / 2;
+		const gapWidth = allBoundaries[ maxIdx + 1 ] - allBoundaries[ maxIdx ];
+		const halfBeam = Math.min(
+			( DEFAULT_BEAM_RIGHT - DEFAULT_BEAM_LEFT ) / 2,
+			gapWidth * 0.4
+		);
+		const newBeam = {
+			left: centerT - halfBeam,
+			right: centerT + halfBeam,
+		};
+		const newBeams = [ ...beams, newBeam ].sort(
+			( a, b ) => a.left - b.left
+		);
+		setBeams( newBeams );
+		emitChange( pins, dividers, newBeams );
+	}, [ dividers, beams, pins, emitChange ] );
 
 	const handleRemoveSplit = useCallback( () => {
 		if ( dividers.length === 0 ) return;
-		// Remove the last-added divider
 		const newDividers = dividers.slice( 0, -1 );
 		setDividers( newDividers );
-		emitChange( pins, newDividers );
-	}, [ dividers, pins, emitChange ] );
+		emitChange( pins, newDividers, beams );
+	}, [ dividers, beams, pins, emitChange ] );
+
+	const handleRemoveBeam = useCallback( () => {
+		if ( beams.length === 0 ) return;
+		const newBeams = beams.slice( 0, -1 );
+		setBeams( newBeams );
+		emitChange( pins, dividers, newBeams );
+	}, [ beams, dividers, pins, emitChange ] );
 
 	const handleReset = useCallback( () => {
-		// Re-place default pins
 		const defaultPins = [
 			{ x: 25, y: 15, label: 'TL' },
 			{ x: 75, y: 15, label: 'TR' },
@@ -372,35 +601,62 @@ const OpeningSelector = ( {
 		];
 		setPins( defaultPins );
 		setDividers( [] );
-		emitChange( defaultPins, [] );
+		setBeams( [] );
+		emitChange( defaultPins, [], [] );
 	}, [ emitChange ] );
 
 	return (
 		<div className="opening-selector" ref={ containerRef }>
 			<div className="opening-selector-toolbar">
-				<button
-					type="button"
-					onClick={ handleAddSplit }
-					disabled={ disabled || pins.length !== 4 }
-					className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-				>
-					<span aria-hidden="true">＋</span> Add Split
-				</button>
-				{ dividers.length > 0 && (
+				<div className="sv-tool-group">
 					<button
 						type="button"
-						onClick={ handleRemoveSplit }
-						disabled={ disabled }
-						className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+						onClick={ handleAddSplit }
+						disabled={ disabled || pins.length !== 4 }
+						className="sv-btn sv-btn-split"
 					>
-						<span aria-hidden="true">−</span> Remove Split
+						<span className="sv-btn-icon">＋</span>
+						<span className="sv-btn-label">Add Split</span>
 					</button>
-				) }
+					<button
+						type="button"
+						onClick={ handleAddBeam }
+						disabled={ disabled || pins.length !== 4 }
+						className="sv-btn sv-btn-beam"
+					>
+						<span className="sv-btn-icon">＋</span>
+						<span className="sv-btn-label">Add Beam</span>
+					</button>
+				</div>
+				<div className="sv-tool-group">
+					{ dividers.length > 0 && (
+						<button
+							type="button"
+							onClick={ handleRemoveSplit }
+							disabled={ disabled }
+							className="sv-btn sv-btn-split sv-btn-remove"
+						>
+							<span className="sv-btn-icon">−</span>
+							<span className="sv-btn-label">Remove Split</span>
+						</button>
+					) }
+					{ beams.length > 0 && (
+						<button
+							type="button"
+							onClick={ handleRemoveBeam }
+							disabled={ disabled }
+							className="sv-btn sv-btn-beam sv-btn-remove"
+						>
+							<span className="sv-btn-icon">−</span>
+							<span className="sv-btn-label">Remove Beam</span>
+						</button>
+					) }
+				</div>
 				<button
 					type="button"
 					onClick={ handleReset }
 					disabled={ disabled }
-					className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+					className="sv-btn sv-btn-reset"
 				>
 					Reset
 				</button>
@@ -412,13 +668,23 @@ const OpeningSelector = ( {
 					: 'Loading…' }
 			</p>
 
-			{ dividers.length > 0 && (
+			{ ( dividers.length > 0 || beams.length > 0 ) && (
 				<p
-					className="opening-selector-hint"
+					className="opening-selector-hint sv-hint-secondary"
 					style={ { fontSize: '11px', marginTop: '-4px' } }
 				>
-					{ dividers.length } split{ dividers.length > 1 ? 's' : '' }{ ' ' }
-					— drag the yellow handle to reposition
+					{ dividers.length > 0 && (
+						<span>
+							{ dividers.length } split
+							{ dividers.length > 1 ? 's' : '' }{' '}
+						</span>
+					) }
+					{ beams.length > 0 && (
+						<span>
+							{ beams.length } beam{ beams.length > 1 ? 's' : '' }{' '}
+						</span>
+					) }
+					— drag handles to reposition edges
 				</p>
 			) }
 

@@ -14,6 +14,8 @@ export function useViewState() {
 		error: null,
 		corners: [],
 		dividers: [],
+		beams: [],
+		retractLevels: [],
 		workingUrl: null,
 	} );
 
@@ -32,6 +34,8 @@ export function useViewState() {
 				error: null,
 				corners: [],
 				dividers: [],
+				beams: [],
+				retractLevels: [],
 				workingUrl: null,
 			};
 		} );

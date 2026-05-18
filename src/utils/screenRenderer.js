@@ -1,7 +1,7 @@
 /**
  * Screen Renderer Utility
  * Deterministically renders a photorealistic screen overlay onto a canvas.
- * Supports multi-panel screens via dividers.
+ * Supports multi-panel screens via dividers and beams.
  *
  * Frame bar proportions (real retractable screen ratios):
  *   - Top Cassette:  thickest  (~20-24px at 1024px)  — houses the motor/roller
@@ -171,9 +171,7 @@ const drawEdgeBar = ( ctx, x1, y1, x2, y2, thickness, baseColor ) => {
 const createClothPattern = ( hexColor, isInside, panelScale ) => {
 	const pCanvas = document.createElement( 'canvas' );
 
-	// Increased density: smaller base size.
-	const baseSize = isInside ? 4 : 2.66; // Smaller sizes mean tighter weave
-	// Scale relative to the size of the panel to maintain perspective, but clamp to minimum 2px
+	const baseSize = isInside ? 4 : 2.66;
 	const size = Math.max( 2, Math.round( baseSize * panelScale ) );
 
 	pCanvas.width = size;
@@ -181,11 +179,9 @@ const createClothPattern = ( hexColor, isInside, panelScale ) => {
 	const pCtx = pCanvas.getContext( '2d' );
 
 	if ( ! isInside ) {
-		// Opaque base for exterior
 		pCtx.fillStyle = hexColor;
 		pCtx.fillRect( 0, 0, size, size );
 	} else {
-		// Transparent base for interior
 		pCtx.clearRect( 0, 0, size, size );
 	}
 
@@ -244,32 +240,24 @@ const drawFabricPanel = (
 	ctx.closePath();
 	ctx.clip();
 
-	// Scale based on the panel's physical size to adjust weave density dynamically.
-	// If the panel is smaller (farther away or just small), the weave gets proportionally smaller.
-	// A 1024px dimension is our baseline 1.0 scale.
-	// We boost it slightly (e.g., x 1.5) to balance the baseSizes defined above.
 	const panelScale = ( Math.max( maxX - minX, maxY - minY ) / 1024 ) * 1.5;
 
 	if ( isInside ) {
 		const meshOpacity = 1 - visibility / 100;
 
-		// Base dark tint
 		ctx.fillStyle = hexToRgba( color, meshOpacity * 0.4 );
 		ctx.fillRect( 0, 0, width, height );
 
-		// Cloth pattern
 		const patternCanvas = createClothPattern( color, true, panelScale );
 		ctx.fillStyle = ctx.createPattern( patternCanvas, 'repeat' );
-		ctx.globalAlpha = meshOpacity * 1.5; // Boost pattern visibility relative to tint
+		ctx.globalAlpha = meshOpacity * 1.5;
 		ctx.fillRect( 0, 0, width, height );
 		ctx.globalAlpha = 1.0;
 	} else {
-		// Opaque cloth pattern
 		const patternCanvas = createClothPattern( color, false, panelScale );
 		ctx.fillStyle = ctx.createPattern( patternCanvas, 'repeat' );
 		ctx.fillRect( 0, 0, width, height );
 
-		// Subtle large-scale shadows/lighting for realism
 		const minY = Math.min( ...panelPts.map( ( p ) => p.y ) );
 		const maxY = Math.max( ...panelPts.map( ( p ) => p.y ) );
 		const lightGrad = ctx.createLinearGradient( 0, minY, 0, maxY );
@@ -280,7 +268,6 @@ const drawFabricPanel = (
 		ctx.fillStyle = lightGrad;
 		ctx.fillRect( 0, 0, width, height );
 
-		// Subtle horizontal roller waves
 		const waveGrad = ctx.createLinearGradient( 0, minY, 0, maxY );
 		for ( let i = 0; i <= 1; i += 0.1 ) {
 			waveGrad.addColorStop(
@@ -295,16 +282,82 @@ const drawFabricPanel = (
 	ctx.restore();
 };
 
+/**
+ * Draws a 3D structural pillar at a divider position.
+ */
+const drawPillar = ( ctx, x1, y1, x2, y2, thickness, baseColor ) => {
+	ctx.save();
+	const dx = x2 - x1,
+		dy = y2 - y1;
+	const len = Math.sqrt( dx * dx + dy * dy );
+	if ( len < 1 ) {
+		ctx.restore();
+		return;
+	}
+	const nx = -dy / len,
+		ny = dx / len;
+
+	ctx.save();
+	ctx.shadowColor = 'rgba(0,0,0,0.4)';
+	ctx.shadowBlur = 8;
+	ctx.shadowOffsetX = 3;
+	ctx.shadowOffsetY = 2;
+	ctx.strokeStyle = 'rgba(0,0,0,0)';
+	ctx.lineWidth = thickness;
+	ctx.lineCap = 'butt';
+	ctx.beginPath();
+	ctx.moveTo( x1, y1 );
+	ctx.lineTo( x2, y2 );
+	ctx.stroke();
+	ctx.restore();
+
+	ctx.strokeStyle = baseColor;
+	ctx.lineWidth = thickness;
+	ctx.lineCap = 'butt';
+	ctx.beginPath();
+	ctx.moveTo( x1, y1 );
+	ctx.lineTo( x2, y2 );
+	ctx.stroke();
+
+	const innerOff = thickness * 0.25;
+	ctx.strokeStyle = darken( baseColor, 35 );
+	ctx.lineWidth = Math.max( 2, thickness * 0.35 );
+	ctx.beginPath();
+	ctx.moveTo( x1 - nx * innerOff, y1 - ny * innerOff );
+	ctx.lineTo( x2 - nx * innerOff, y2 - ny * innerOff );
+	ctx.stroke();
+
+	const hlOff = thickness * 0.38;
+	ctx.strokeStyle = lighten( baseColor, 40 );
+	ctx.lineWidth = Math.max( 1.5, thickness * 0.2 );
+	ctx.beginPath();
+	ctx.moveTo( x1 + nx * hlOff, y1 + ny * hlOff );
+	ctx.lineTo( x2 + nx * hlOff, y2 + ny * hlOff );
+	ctx.stroke();
+
+	ctx.strokeStyle = lighten( baseColor, 70 );
+	ctx.lineWidth = Math.max( 0.8, thickness * 0.1 );
+	ctx.globalAlpha = 0.6;
+	ctx.beginPath();
+	ctx.moveTo( x1 + nx * ( hlOff * 0.6 ), y1 + ny * ( hlOff * 0.6 ) );
+	ctx.lineTo( x2 + nx * ( hlOff * 0.6 ), y2 + ny * ( hlOff * 0.6 ) );
+	ctx.stroke();
+	ctx.globalAlpha = 1.0;
+
+	ctx.restore();
+};
+
 // ─── Main export ────────────────────────────────────────────────────
 
 /**
- * Renders a screen overlay with support for multi-panel splits.
+ * Renders a screen overlay with support for multi-panel splits and beams.
  *
  * @param {Object} params
  * @param {number} params.width - canvas width
  * @param {number} params.height - canvas height
  * @param {Array} params.corners - [{x%, y%, label}, ...] TL, TR, BR, BL
  * @param {Array} params.dividers - [0.33, 0.66, ...] fractions for vertical splits
+ * @param {Array} params.beams - [{left, right}, ...] structural gaps
  * @param {string} params.viewType - 'inside' | 'outside'
  * @param {string} params.screenColor - e.g. 'dark bronze'
  * @param {number} params.interiorVisibility - 90 or 95
@@ -315,11 +368,11 @@ export const renderScreenOverlay = ( {
 	height,
 	corners,
 	dividers = [],
+	beams = [],
 	viewType,
 	screenColor,
 	interiorVisibility,
-	retractLevel = 0,
-	useColumnGaps = false,
+	retractLevels = [],
 	targetCanvas = null,
 } ) => {
 	const canvas = targetCanvas || document.createElement( 'canvas' );
@@ -333,58 +386,50 @@ export const renderScreenOverlay = ( {
 	const visibility = interiorVisibility || 90;
 	const scale = Math.min( width, height ) / 1024;
 
-	// Convert percentage corners to pixel coordinates
-	// TL=0, TR=1, BR=2, BL=3
 	const pts = corners.map( ( c ) => ( {
 		x: ( c.x / 100 ) * width,
 		y: ( c.y / 100 ) * height,
 	} ) );
 
-	const r = Math.max( 0, Math.min( 1, retractLevel || 0 ) );
-	const newBL = lerp( pts[ 3 ], pts[ 0 ], r );
-	const newBR = lerp( pts[ 2 ], pts[ 1 ], r );
-
 	const sortedDivs = [ ...dividers ].sort( ( a, b ) => a - b );
+	const sortedBeams = [ ...beams ].sort( ( a, b ) => a.left - b.left );
 
-	// Build panel boundaries: [0, div1, div2, ..., 1]
-	const boundaries = [ 0, ...sortedDivs, 1 ];
+	// Build all boundaries: splits + beam edges
+	const allBoundaries = [ 0, ...sortedDivs ];
+	sortedBeams.forEach( ( beam ) => {
+		allBoundaries.push( beam.left );
+		allBoundaries.push( beam.right );
+	} );
+	allBoundaries.push( 1 );
+	allBoundaries.sort( ( a, b ) => a - b );
 
-	// ── Column gap calculations ────────────────────────────────────────
+	// Check if we're in multi-panel mode
+	const isMultiPanel = sortedDivs.length > 0 || sortedBeams.length > 0;
 
-	const hasGaps = useColumnGaps && sortedDivs.length > 0;
-	let topOffsetFrac = 0;
-	let botOffsetFrac = 0;
-	let colThick = 0;
+	// Helper to check if a panel range falls within a beam gap
+	const isBeamGap = ( tLeft, tRight ) => {
+		return sortedBeams.some( ( beam ) => {
+			return tLeft >= beam.left - 0.001 && tRight <= beam.right + 0.001;
+		} );
+	};
 
-	if ( hasGaps ) {
-		const gapWidth = Math.min( Math.max( width, height ) * 0.015, 24 );
-		colThick = Math.max( 10, Math.round( 20 * scale ) );
-		const topLen = Math.hypot(
-			pts[ 1 ].x - pts[ 0 ].x,
-			pts[ 1 ].y - pts[ 0 ].y
-		);
-		const botLen = Math.hypot(
-			pts[ 2 ].x - pts[ 3 ].x,
-			pts[ 2 ].y - pts[ 3 ].y
-		);
-		if ( topLen > 0 ) topOffsetFrac = gapWidth / 2 / topLen;
-		if ( botLen > 0 ) botOffsetFrac = gapWidth / 2 / botLen;
-	}
-
-	const getAdjBoundary = ( b, isStart ) => {
-		if ( ! hasGaps ) return b;
-		if ( isStart && b > 0 ) return b + topOffsetFrac;
-		if ( ! isStart && b < 1 ) return b - topOffsetFrac;
-		return b;
+	// Helper to get retract level for a panel index
+	const getRetractLevel = ( panelIdx ) => {
+		if ( ! Array.isArray( retractLevels ) || retractLevels.length === 0 ) return 1;
+		const idx = Math.min( panelIdx, retractLevels.length - 1 );
+		return Math.max( 0, Math.min( 1, retractLevels[ idx ] ?? 1 ) );
 	};
 
 	// ── 1. Draw fabric for each panel ─────────────────────────────────
 
-	for ( let i = 0; i < boundaries.length - 1; i++ ) {
-		const tLeft = getAdjBoundary( boundaries[ i ], true );
-		const tRight = getAdjBoundary( boundaries[ i + 1 ], false );
+	let panelIdx = 0;
+	for ( let i = 0; i < allBoundaries.length - 1; i++ ) {
+		const tLeft = allBoundaries[ i ];
+		const tRight = allBoundaries[ i + 1 ];
 
-		// 4 corners of this panel (interpolated from outer corners)
+		if ( isBeamGap( tLeft, tRight ) ) continue;
+
+		const r = getRetractLevel( panelIdx );
 		const panelTL = lerp( pts[ 0 ], pts[ 1 ], tLeft );
 		const panelTR = lerp( pts[ 0 ], pts[ 1 ], tRight );
 		const panelBR = lerp( pts[ 3 ], pts[ 2 ], tRight );
@@ -406,6 +451,7 @@ export const renderScreenOverlay = ( {
 			width,
 			height
 		);
+		panelIdx++;
 	}
 
 	// ── 2. Draw frame bars ────────────────────────────────────────────
@@ -476,12 +522,57 @@ export const renderScreenOverlay = ( {
 		);
 	};
 
-	if ( hasGaps ) {
-		// Column gap mode: each panel is an independent unit
-		for ( let i = 0; i < boundaries.length - 1; i++ ) {
-			const tLeft = getAdjBoundary( boundaries[ i ], true );
-			const tRight = getAdjBoundary( boundaries[ i + 1 ], false );
+	if ( isMultiPanel ) {
+		// Segmented mode: independent panels with their own frames
 
+		// Draw pillars at divider positions (if any)
+		if ( sortedDivs.length > 0 ) {
+			const PILLAR_COLOR = '#9a948b';
+			const pillarThick = Math.max( 16, Math.round( 34 * scale ) );
+
+			sortedDivs.forEach( ( t ) => {
+				const pTop = lerp( pts[ 0 ], pts[ 1 ], t );
+				const pBot = lerp( pts[ 3 ], pts[ 2 ], t );
+				const pExt = extendAsym(
+					pTop.x,
+					pTop.y,
+					pBot.x,
+					pBot.y,
+					cassetteThick * 0.5,
+					cassetteThick * 0.2
+				);
+				drawPillar(
+					ctx,
+					pExt.x1,
+					pExt.y1,
+					pExt.x2,
+					pExt.y2,
+					pillarThick,
+					PILLAR_COLOR
+				);
+			} );
+		}
+
+		// Draw beam side bars (regular tracks at beam edges)
+		sortedBeams.forEach( ( beam ) => {
+			const leftTop = lerp( pts[ 0 ], pts[ 1 ], beam.left );
+			const leftBot = lerp( pts[ 3 ], pts[ 2 ], beam.left );
+			const rightTop = lerp( pts[ 0 ], pts[ 1 ], beam.right );
+			const rightBot = lerp( pts[ 3 ], pts[ 2 ], beam.right );
+
+			drawTrack( leftTop.x, leftTop.y, leftBot.x, leftBot.y );
+			drawTrack( rightTop.x, rightTop.y, rightBot.x, rightBot.y );
+		} );
+
+		// Draw frame for each panel — skip beam gaps
+		panelIdx = 0;
+		for ( let i = 0; i < allBoundaries.length - 1; i++ ) {
+			const tLeft = allBoundaries[ i ];
+			const tRight = allBoundaries[ i + 1 ];
+
+			if ( isBeamGap( tLeft, tRight ) ) continue;
+
+			const r = getRetractLevel( panelIdx );
 			const panelTL = lerp( pts[ 0 ], pts[ 1 ], tLeft );
 			const panelTR = lerp( pts[ 0 ], pts[ 1 ], tRight );
 			const panelBR = lerp( pts[ 3 ], pts[ 2 ], tRight );
@@ -489,59 +580,21 @@ export const renderScreenOverlay = ( {
 			const retBR = lerp( panelBR, panelTR, r );
 			const retBL = lerp( panelBL, panelTL, r );
 
-			// Tracks stay full height (structural guide channels)
 			drawTrack( panelTL.x, panelTL.y, panelBL.x, panelBL.y );
 			drawTrack( panelTR.x, panelTR.y, panelBR.x, panelBR.y );
 			drawCassette( panelTL.x, panelTL.y, panelTR.x, panelTR.y );
-			// Bottom rail moves with retraction
 			drawBottomRail( retBL.x, retBL.y, retBR.x, retBR.y );
+			panelIdx++;
 		}
-
-		// Draw thick structural columns at each divider
-		sortedDivs.forEach( ( t ) => {
-			const colTop = lerp( pts[ 0 ], pts[ 1 ], t );
-			const colBot = lerp( pts[ 3 ], pts[ 2 ], t );
-			drawEdgeBar(
-				ctx,
-				colTop.x,
-				colTop.y,
-				colBot.x,
-				colBot.y,
-				colThick,
-				FRAME_COLOR
-			);
-		} );
 	} else {
-		// Default mode: shared posts, continuous rails
-		// Outer tracks stay full height (structural guide channels)
+		// Single panel mode: simple frame
+		const r = getRetractLevel( 0 );
 		drawTrack( pts[ 0 ].x, pts[ 0 ].y, pts[ 3 ].x, pts[ 3 ].y );
 		drawTrack( pts[ 1 ].x, pts[ 1 ].y, pts[ 2 ].x, pts[ 2 ].y );
-
-		// Center posts stay full height
-		sortedDivs.forEach( ( t ) => {
-			const divTop = lerp( pts[ 0 ], pts[ 1 ], t );
-			const divBot = lerp( pts[ 3 ], pts[ 2 ], t );
-			const divExt = extendAsym(
-				divTop.x,
-				divTop.y,
-				divBot.x,
-				divBot.y,
-				cassetteThick * 0.6,
-				0
-			);
-			drawEdgeBar(
-				ctx,
-				divExt.x1,
-				divExt.y1,
-				divExt.x2,
-				divExt.y2,
-				postThick,
-				FRAME_COLOR
-			);
-		} );
-
 		drawCassette( pts[ 0 ].x, pts[ 0 ].y, pts[ 1 ].x, pts[ 1 ].y );
-		// Bottom rail moves with retraction
+
+		const newBL = lerp( pts[ 3 ], pts[ 0 ], r );
+		const newBR = lerp( pts[ 2 ], pts[ 1 ], r );
 		drawBottomRail( newBL.x, newBL.y, newBR.x, newBR.y );
 	}
 

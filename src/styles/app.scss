@@ -1,5 +1,5 @@
 /**
- * Screen Visualizer - Modern Brand-Aligned Styles
+ * Screen Visualizer - Modern Tabbed UI Styles
  * Harmonizes with screensofla.com WordPress / Elementor / Inspaire theme.
  */
 
@@ -10,14 +10,300 @@
 /* ── Base ─────────────────────────────────────────────────────────── */
 
 .screen-visualizer {
-    @apply max-w-7xl mx-auto px-4 py-8 md:px-6 md:py-10;
+    @apply max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-8;
     font-family: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Header ───────────────────────────────────────────────────────── */
+
+.sv-header {
+    @apply mb-6;
+}
+
+.sv-header-title {
+    @apply text-2xl md:text-3xl font-bold text-slate-900 tracking-tight;
+}
+
+.sv-header-desc {
+    @apply text-slate-500 mt-1 text-sm max-w-xl;
+}
+
+/* ── Settings Bar ─────────────────────────────────────────────────── */
+
+.sv-settings-bar {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm;
+}
+
+.sv-settings-group {
+    @apply flex flex-col gap-2;
+}
+
+.sv-settings-label {
+    @apply text-xs font-semibold text-slate-700 uppercase tracking-wide;
+}
+
+.sv-color-swatches {
+    @apply flex flex-wrap items-center gap-2;
+}
+
+.sv-swatch {
+    @apply w-8 h-8 rounded-full border-2 transition-all duration-200 shadow-sm cursor-pointer hover:scale-110;
+}
+
+.sv-swatch--active {
+    @apply border-brand-500 scale-110 ring-2 ring-brand-200;
+}
+
+.sv-swatch-custom {
+    @apply px-2.5 py-1 text-xs font-semibold rounded-full border-2 transition-all duration-200 border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer;
+}
+
+.sv-swatch-custom--active {
+    @apply border-brand-500 text-brand-700 bg-brand-50 ring-2 ring-brand-200;
+}
+
+.sv-custom-input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 mt-1;
+}
+
+.sv-select {
+    @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+}
+
+/* ── Tabbed Content ───────────────────────────────────────────────── */
+
+.sv-tabbed-content {
+    @apply flex flex-col gap-4;
+}
+
+.sv-tab-bar {
+    @apply flex items-center gap-1 p-1 bg-white rounded-xl border border-slate-200 shadow-sm inline-flex;
+}
+
+.sv-tab {
+    @apply inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50;
+}
+
+.sv-tab--active {
+    @apply bg-slate-900 text-white shadow-sm;
+}
+
+.sv-tab-content {
+    @apply grid grid-cols-1 lg:grid-cols-12 gap-5;
+}
+
+/* ── Editor Panel ─────────────────────────────────────────────────── */
+
+.sv-editor-col {
+    @apply lg:col-span-5;
+}
+
+.sv-editor-panel {
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden;
+}
+
+.sv-editor-header {
+    @apply flex items-center justify-between px-4 py-3 border-b border-slate-100;
+}
+
+.sv-editor-header-left {
+    @apply flex items-center gap-2.5;
+}
+
+.sv-editor-icon {
+    @apply w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center text-brand-600;
+}
+
+.sv-editor-title {
+    @apply text-sm font-bold text-slate-900;
+}
+
+.sv-editor-subtitle {
+    @apply text-xs text-slate-400;
+}
+
+.sv-ready-badge {
+    @apply inline-flex items-center gap-1 text-xs font-semibold text-brand-700 bg-brand-50 px-2.5 py-1 rounded-full border border-brand-100;
+}
+
+.sv-editor-body {
+    @apply p-4;
+}
+
+.sv-generate-btn {
+    @apply w-full mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.sv-generate-btn--active {
+    @apply shadow-lg hover:shadow-xl ring-2 ring-brand-300/50;
+}
+
+.sv-error-msg {
+    @apply mt-3 flex items-start gap-2 text-red-700 text-xs bg-red-50 px-3 py-2.5 rounded-lg border border-red-100;
+}
+
+/* ── Preview Panel ────────────────────────────────────────────────── */
+
+.sv-preview-col {
+    @apply lg:col-span-7;
+}
+
+.sv-preview-stage {
+    @apply bg-slate-100 rounded-xl border border-slate-200 min-h-[320px] flex items-stretch justify-center shadow-inner overflow-hidden;
+}
+
+.sv-preview-image-wrap {
+    @apply flex-1 relative min-w-0;
+}
+
+.sv-preview-image {
+    @apply w-full h-full object-contain;
+}
+
+/* ── Panel Sliders ────────────────────────────────────────────────── */
+
+.sv-panel-sliders {
+    @apply flex flex-col items-center gap-3 px-3 py-4 bg-slate-50 border-l border-slate-200 shrink-0;
+}
+
+.sv-panel-slider {
+    @apply flex flex-col items-center gap-1.5;
+}
+
+.sv-panel-slider-label {
+    @apply text-[10px] font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap;
+}
+
+.sv-panel-slider-track {
+    @apply h-28 w-8 flex items-center justify-center;
+}
+
+.sv-panel-slider-input {
+    @apply w-24 h-2 cursor-pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    transform: rotate(-90deg);
+    transform-origin: center;
+}
+
+.sv-panel-slider-input::-webkit-slider-runnable-track {
+    @apply h-1.5 rounded-full bg-slate-300;
+}
+
+.sv-panel-slider-input::-webkit-slider-thumb {
+    @apply w-4 h-4 rounded-full bg-brand-600 shadow-sm;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    margin-top: -5px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sv-panel-slider-input::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 0 4px rgba(51, 153, 102, 0.15);
+}
+
+.sv-panel-slider-input::-moz-range-track {
+    @apply h-1.5 rounded-full bg-slate-300;
+}
+
+.sv-panel-slider-input::-moz-range-thumb {
+    @apply w-4 h-4 rounded-full bg-brand-600 shadow-sm border-0;
+    cursor: pointer;
+}
+
+.sv-panel-slider-value {
+    @apply text-[10px] font-bold text-slate-700 tabular-nums;
+}
+
+.sv-preview-empty {
+    @apply text-center py-20 px-6;
+}
+
+.sv-preview-empty-icon {
+    @apply w-14 h-14 rounded-xl bg-white border border-slate-200 flex items-center justify-center mx-auto mb-3 shadow-sm text-slate-300;
+}
+
+.sv-preview-empty-text {
+    @apply text-slate-500 text-sm font-medium;
+}
+
+.sv-preview-empty-sub {
+    @apply text-slate-400 text-xs mt-1;
+}
+
+.sv-preview-actions {
+    @apply mt-4 flex justify-end gap-3;
+}
+
+.sv-action-btn {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.sv-action-btn--primary {
+    @apply bg-brand-600 text-white hover:bg-brand-700;
+}
+
+.sv-action-btn--secondary {
+    @apply bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 hover:border-slate-300;
+}
+
+.sv-recording-status {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600 border border-slate-200;
+}
+
+/* ── Modal ────────────────────────────────────────────────────────── */
+
+.sv-modal-overlay {
+    @apply fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4;
+}
+
+.sv-modal {
+    @apply w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl;
+}
+
+.sv-modal-header {
+    @apply flex items-center justify-between px-5 py-3.5 border-b border-slate-100;
+}
+
+.sv-modal-title {
+    @apply text-sm font-semibold text-slate-900;
+}
+
+.sv-modal-close {
+    @apply text-slate-400 hover:text-slate-700 text-sm transition-colors;
+}
+
+.sv-modal-video {
+    @apply bg-black;
+}
+
+.sv-modal-video-player {
+    @apply w-full max-h-[60vh];
+}
+
+.sv-modal-footer {
+    @apply flex items-center justify-end gap-2 px-5 py-3.5 border-t border-slate-100;
+}
+
+.sv-modal-btn {
+    @apply inline-flex items-center px-3 py-2 rounded-lg text-xs font-medium transition;
+}
+
+.sv-modal-btn--primary {
+    @apply bg-brand-600 text-white hover:bg-brand-700;
+}
+
+.sv-modal-btn--secondary {
+    @apply border border-slate-200 bg-white text-slate-700 hover:bg-slate-50;
 }
 
 /* ── Drop Zone ────────────────────────────────────────────────────── */
 
 .sv-drop-zone {
-    @apply relative border-2 border-dashed border-slate-300 rounded-xl p-6 text-center transition-all duration-200 bg-slate-50/60 cursor-pointer;
+    @apply relative border-2 border-dashed border-slate-300 rounded-xl p-5 text-center transition-all duration-200 bg-slate-50/60 cursor-pointer;
 }
 
 .sv-drop-zone:hover {
@@ -54,15 +340,19 @@
 /* ── Opening Selector ─────────────────────────────────────────────── */
 
 .opening-selector {
-    @apply bg-white;
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden;
 }
 
 .opening-selector-toolbar {
-    @apply flex items-center gap-2 px-3 py-2.5 border-b border-slate-100 bg-slate-50/80;
+    @apply flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50/80;
 }
 
 .opening-selector-hint {
-    @apply text-xs text-slate-500 px-3 py-2 bg-slate-50/60 border-b border-slate-100;
+    @apply text-xs text-slate-500 px-4 py-2 bg-slate-50/60 border-b border-slate-100;
+}
+
+.opening-selector-hint.sv-hint-secondary {
+    @apply text-slate-400;
 }
 
 .opening-selector-canvas-wrap {
@@ -72,6 +362,44 @@
 .opening-selector-canvas {
     @apply block w-full;
     touch-action: none;
+}
+
+/* ── Tool Buttons ─────────────────────────────────────────────────── */
+
+.sv-tool-group {
+    @apply flex items-center gap-1.5;
+}
+
+.sv-btn {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed;
+}
+
+.sv-btn-icon {
+    @apply text-sm leading-none;
+}
+
+.sv-btn-label {
+    @apply hidden sm:inline;
+}
+
+.sv-btn-split {
+    @apply border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:border-amber-400;
+}
+
+.sv-btn-split.sv-btn-remove {
+    @apply border-amber-200 bg-white text-amber-600 hover:bg-amber-50 hover:border-amber-300;
+}
+
+.sv-btn-beam {
+    @apply border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-400;
+}
+
+.sv-btn-beam.sv-btn-remove {
+    @apply border-red-200 bg-white text-red-600 hover:bg-red-50 hover:border-red-300;
+}
+
+.sv-btn-reset {
+    @apply border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 ml-auto;
 }
 
 /* ── Spinner ──────────────────────────────────────────────────────── */
