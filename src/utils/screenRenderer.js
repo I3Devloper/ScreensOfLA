@@ -439,8 +439,8 @@ export const renderScreenOverlay = ( {
 		const panelPts = [
 			panelTL,
 			panelTR,
-			lerp( panelBR, panelTR, 1 - r ),
-			lerp( panelBL, panelTL, 1 - r ),
+			lerp( panelBR, panelTR, r ),
+			lerp( panelBL, panelTL, r ),
 		];
 
 		drawFabricPanel(
