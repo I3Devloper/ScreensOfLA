@@ -2,7 +2,7 @@
  * Screen Visualizer - Main App Component
  * Deterministic Canvas Render — no AI. Pixel-perfect screen placement.
  */
-import { useState, useCallback, useRef, useEffect } from '@wordpress/element';
+import { useState, useCallback, useRef } from '@wordpress/element';
 import ImageUploader from './components/ImageUploader';
 import OpeningSelector from './components/OpeningSelector';
 import { useViewState } from './hooks/useViewState';
@@ -44,9 +44,6 @@ const downloadImage = async ( dataUrl, filename ) => {
 	}
 };
 
-/**
- * Calculate the number of screen panels from dividers and beams.
- */
 const calcPanelCount = ( dividers, beams ) => {
 	const sortedDivs = [ ...dividers ].sort( ( a, b ) => a - b );
 	const sortedBeams = [ ...beams ].sort( ( a, b ) => a.left - b.left );
@@ -63,17 +60,14 @@ const calcPanelCount = ( dividers, beams ) => {
 		const tLeft = allBoundaries[ i ];
 		const tRight = allBoundaries[ i + 1 ];
 		const isBeamGap = sortedBeams.some(
-			( beam ) => tLeft >= beam.left - 0.001 && tRight <= beam.right + 0.001
+			( beam ) =>
+				tLeft >= beam.left - 0.001 && tRight <= beam.right + 0.001
 		);
 		if ( ! isBeamGap ) count++;
 	}
 	return Math.max( 1, count );
 };
 
-/**
- * Sync retractLevels array length to match panel count.
- * Preserves existing values, fills new slots with 1 (fully closed).
- */
 const syncRetractLevels = ( currentLevels, panelCount ) => {
 	const levels = [ ...( currentLevels || [] ) ];
 	while ( levels.length < panelCount ) levels.push( 1 );
@@ -94,7 +88,6 @@ function App() {
 	const [ videoPreviewUrl, setVideoPreviewUrl ] = useState( null );
 	const [ videoPreviewFilename, setVideoPreviewFilename ] = useState( '' );
 
-	// Throttled re-render refs
 	const reloadTimersRef = useRef( { outside: null, inside: null } );
 
 	const handleUploadOutside = useCallback(
@@ -163,22 +156,16 @@ function App() {
 		inside.reset();
 	}, [ inside ] );
 
-	/**
-	 * Regenerate the preview with current retract levels (throttled).
-	 */
 	const handleRetractChange = useCallback(
 		( viewType, newLevels ) => {
 			const isOutside = viewType === 'outside';
 			const view = isOutside ? outside : inside;
 			const key = isOutside ? 'outside' : 'inside';
 
-			// Update state immediately for UI responsiveness
 			view.update( { retractLevels: newLevels } );
 
-			// Skip if no result yet
 			if ( ! view.state.result || ! view.state.workingUrl ) return;
 
-			// Throttle re-render
 			if ( reloadTimersRef.current[ key ] ) {
 				clearTimeout( reloadTimersRef.current[ key ] );
 			}
@@ -213,7 +200,10 @@ function App() {
 						retractLevels: newLevels,
 					} );
 					const overlayUrl = overlayCanvas.toDataURL( 'image/png' );
-					const compositeUrl = await bakeOverlay( workingUrl, overlayUrl );
+					const compositeUrl = await bakeOverlay(
+						workingUrl,
+						overlayUrl
+					);
 					const watermarkedUrl = await addWatermark( compositeUrl );
 					view.update( { result: watermarkedUrl } );
 				} catch ( err ) {
@@ -234,7 +224,10 @@ function App() {
 			const beams = view.state.beams || [];
 			const workingUrl = view.state.workingUrl;
 			const panelCount = calcPanelCount( dividers, beams );
-			const retractLevels = syncRetractLevels( view.state.retractLevels, panelCount );
+			const retractLevels = syncRetractLevels(
+				view.state.retractLevels,
+				panelCount
+			);
 
 			if (
 				! targetImage ||
@@ -254,7 +247,12 @@ function App() {
 				return;
 			}
 
-			view.update( { isGenerating: true, error: null, result: null, retractLevels } );
+			view.update( {
+				isGenerating: true,
+				error: null,
+				result: null,
+				retractLevels,
+			} );
 			setActiveView( viewType );
 
 			try {
@@ -357,39 +355,56 @@ function App() {
 	const activeResult = activeViewObj.state.result;
 	const activeRetractLevels = activeViewObj.state.retractLevels || [];
 
-	/**
-	 * Vertical Panel Slider Component
-	 */
-	const PanelSliders = ( { levels, onChange, view } ) => {
+	const PanelSliders = ( { levels, onChange, viewType } ) => {
 		if ( ! activeResult || levels.length === 0 ) return null;
 
 		return (
 			<div className="sv-panel-sliders">
-				{ levels.map( ( level, idx ) => (
-					<div key={ idx } className="sv-panel-slider">
-						<span className="sv-panel-slider-label">
-							Panel { idx + 1 }
+				<div className="sv-sliders-header">
+					<span className="sv-sliders-title">Screen Position</span>
+					<div className="sv-sliders-legend">
+						<span className="sv-legend-item sv-legend-open">
+							Open (0%)
 						</span>
-						<div className="sv-panel-slider-track">
-							<input
-								type="range"
-								min="0"
-								max="100"
-								value={ Math.round( level * 100 ) }
-								onChange={ ( e ) => {
-									const newLevels = [ ...levels ];
-									newLevels[ idx ] = Number( e.target.value ) / 100;
-									onChange( view, newLevels );
-								} }
-								className="sv-panel-slider-input"
-								orient="vertical"
-							/>
-						</div>
-						<span className="sv-panel-slider-value">
-							{ Math.round( level * 100 ) }%
+						<span className="sv-legend-item sv-legend-closed">
+							Closed (100%)
 						</span>
 					</div>
-				) ) }
+				</div>
+				<div className="sv-sliders-track">
+					{ levels.map( ( level, idx ) => {
+						const pct = Math.round( level * 100 );
+						return (
+							<div key={ idx } className="sv-panel-slider">
+								<span className="sv-panel-slider-label">
+									Panel { idx + 1 }
+								</span>
+								<div className="sv-slider-container">
+									<input
+										type="range"
+										min="0"
+										max="100"
+										value={ pct }
+										aria-label={ `Panel ${
+											idx + 1
+										} screen position: ${ pct }%` }
+										aria-valuetext={ `${ pct }% closed` }
+										onChange={ ( e ) => {
+											const newLevels = [ ...levels ];
+											newLevels[ idx ] =
+												Number( e.target.value ) / 100;
+											onChange( viewType, newLevels );
+										} }
+										className="sv-panel-slider-input"
+									/>
+								</div>
+								<span className="sv-panel-slider-value">
+									{ pct }%
+								</span>
+							</div>
+						);
+					} ) }
+				</div>
 			</div>
 		);
 	};
@@ -400,28 +415,64 @@ function App() {
 				<div className="sv-editor-header-left">
 					<div className="sv-editor-icon">
 						{ viewType === 'outside' ? (
-							<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
-								<path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z" />
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								className="w-5 h-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								strokeWidth={ 2 }
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z"
+								/>
 							</svg>
 						) : (
-							<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
-								<path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								className="w-5 h-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								strokeWidth={ 2 }
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"
+								/>
 							</svg>
 						) }
 					</div>
 					<div>
 						<h2 className="sv-editor-title">
-							{ viewType === 'outside' ? 'Exterior' : 'Interior' } Photo
+							{ viewType === 'outside' ? 'Exterior' : 'Interior' }{ ' ' }
+							Photo
 						</h2>
 						<p className="sv-editor-subtitle">
-							{ viewType === 'outside' ? 'View from outside' : 'View from inside' }
+							{ viewType === 'outside'
+								? 'View from outside'
+								: 'View from inside' }
 						</p>
 					</div>
 				</div>
 				{ view.state.result && (
 					<span className="sv-ready-badge">
-						<svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 3 }>
-							<path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							className="w-3.5 h-3.5"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							strokeWidth={ 3 }
+						>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								d="M4.5 12.75l6 6 9-13.5"
+							/>
 						</svg>
 						Ready
 					</span>
@@ -440,8 +491,14 @@ function App() {
 						<OpeningSelector
 							imageUrl={ view.state.workingUrl }
 							onChange={ ( c, d, b ) => {
-								const panelCount = calcPanelCount( d || [], b || [] );
-								const newLevels = syncRetractLevels( view.state.retractLevels, panelCount );
+								const panelCount = calcPanelCount(
+									d || [],
+									b || []
+								);
+								const newLevels = syncRetractLevels(
+									view.state.retractLevels,
+									panelCount
+								);
 								view.update( {
 									corners: c,
 									dividers: d || [],
@@ -450,7 +507,6 @@ function App() {
 								} );
 							} }
 							disabled={ view.state.isGenerating }
-							viewType={ viewType }
 						/>
 					) }
 				</ImageUploader>
@@ -459,15 +515,18 @@ function App() {
 					<button
 						onClick={ () => handleGenerate( viewType ) }
 						className={ `sv-generate-btn ${
-							( viewType === 'outside' ? canGenerateOutside : canGenerateInside ) &&
+							( viewType === 'outside'
+								? canGenerateOutside
+								: canGenerateInside ) &&
 							! view.state.isGenerating &&
 							! view.state.result
 								? 'sv-generate-btn--active'
 								: ''
 						}` }
 						disabled={
-							! ( viewType === 'outside' ? canGenerateOutside : canGenerateInside ) ||
-							view.state.isGenerating
+							! ( viewType === 'outside'
+								? canGenerateOutside
+								: canGenerateInside ) || view.state.isGenerating
 						}
 					>
 						{ view.state.isGenerating ? (
@@ -476,15 +535,32 @@ function App() {
 								Applying screen…
 							</>
 						) : (
-							<>Generate { viewType === 'outside' ? 'Exterior' : 'Interior' } Preview</>
+							<>
+								Generate{ ' ' }
+								{ viewType === 'outside'
+									? 'Exterior'
+									: 'Interior' }{ ' ' }
+								Preview
+							</>
 						) }
 					</button>
 				) }
 
 				{ view.state.error && (
 					<div className="sv-error-msg">
-						<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
-							<path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							className="w-4 h-4 shrink-0 mt-0.5"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							strokeWidth={ 2 }
+						>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+							/>
 						</svg>
 						{ view.state.error }
 					</div>
@@ -495,18 +571,20 @@ function App() {
 
 	return (
 		<div className="screen-visualizer">
-			{ /* Header */ }
 			<div className="sv-header">
 				<h1 className="sv-header-title">Screen Visualizer</h1>
 				<p className="sv-header-desc">
-					Upload interior and exterior photos, mark your patio opening, and preview how a custom motorized screen will look on your home.
+					Upload interior and exterior photos, mark your patio
+					opening, and preview how a custom motorized screen will look
+					on your home.
 				</p>
 			</div>
 
-			{ /* Settings Bar */ }
 			<div className="sv-settings-bar">
 				<div className="sv-settings-group">
-					<label className="sv-settings-label">Screen Frame Color</label>
+					<label className="sv-settings-label">
+						Screen Frame Color
+					</label>
 					<div className="sv-color-swatches">
 						{ PRESET_COLORS.map( ( color ) => (
 							<button
@@ -517,7 +595,8 @@ function App() {
 								} }
 								className={ `sv-swatch ${
 									! isCustomColor &&
-									screenColor.toLowerCase() === color.name.toLowerCase()
+									screenColor.toLowerCase() ===
+										color.name.toLowerCase()
 										? 'sv-swatch--active'
 										: ''
 								}` }
@@ -539,20 +618,27 @@ function App() {
 						<input
 							type="text"
 							value={ screenColor }
-							onChange={ ( e ) => setScreenColor( e.target.value ) }
+							onChange={ ( e ) =>
+								setScreenColor( e.target.value )
+							}
 							placeholder="e.g. #336699 or forest green"
 							className="sv-custom-input"
 						/>
 					) }
 				</div>
 				<div className="sv-settings-group">
-					<label htmlFor="interior-visibility" className="sv-settings-label">
+					<label
+						htmlFor="interior-visibility"
+						className="sv-settings-label"
+					>
 						Interior See-Through
 					</label>
 					<select
 						id="interior-visibility"
 						value={ interiorVisibility }
-						onChange={ ( e ) => setInteriorVisibility( Number( e.target.value ) ) }
+						onChange={ ( e ) =>
+							setInteriorVisibility( Number( e.target.value ) )
+						}
 						className="sv-select"
 					>
 						<option value={ 90 }>90% Visible (Light Tint)</option>
@@ -561,48 +647,84 @@ function App() {
 				</div>
 			</div>
 
-			{ /* Tabbed Content */ }
 			<div className="sv-tabbed-content">
-				{ /* Tab Switcher */ }
 				<div className="sv-tab-bar">
 					<button
 						onClick={ () => setActiveView( 'outside' ) }
-						className={ `sv-tab ${ activeView === 'outside' ? 'sv-tab--active' : '' }` }
+						className={ `sv-tab ${
+							activeView === 'outside' ? 'sv-tab--active' : ''
+						}` }
 					>
-						<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
-							<path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z" />
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							className="w-4 h-4"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							strokeWidth={ 2 }
+						>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z"
+							/>
 						</svg>
-						Exterior
+						<span className="hidden sm:inline">Exterior</span>
+						<span className="sm:hidden">Outside</span>
 					</button>
 					<button
 						onClick={ () => setActiveView( 'inside' ) }
-						className={ `sv-tab ${ activeView === 'inside' ? 'sv-tab--active' : '' }` }
+						className={ `sv-tab ${
+							activeView === 'inside' ? 'sv-tab--active' : ''
+						}` }
 					>
-						<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
-							<path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							className="w-4 h-4"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							strokeWidth={ 2 }
+						>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"
+							/>
 						</svg>
-						Interior
+						<span className="hidden sm:inline">Interior</span>
+						<span className="sm:hidden">Inside</span>
 					</button>
 				</div>
 
-				{ /* Tab Content */ }
 				<div className="sv-tab-content">
-					{ /* Editor Panel */ }
 					<div className="sv-editor-col">
 						{ activeView === 'outside'
-							? renderEditorPanel( outside, 'outside', handleUploadOutside, handleClearOutside )
-							: renderEditorPanel( inside, 'inside', handleUploadInside, handleClearInside )
-						}
+							? renderEditorPanel(
+									outside,
+									'outside',
+									handleUploadOutside,
+									handleClearOutside
+							  )
+							: renderEditorPanel(
+									inside,
+									'inside',
+									handleUploadInside,
+									handleClearInside
+							  ) }
 					</div>
 
-					{ /* Preview Panel */ }
 					<div className="sv-preview-col">
 						<div className="sv-preview-stage">
 							{ activeIsGenerating ? (
 								<div className="sv-preview-empty">
 									<div className="sv-spinner w-10 h-10" />
-									<p className="sv-preview-empty-text">Applying screen overlay…</p>
-									<p className="sv-preview-empty-sub">This may take a few seconds</p>
+									<p className="sv-preview-empty-text">
+										Applying screen overlay…
+									</p>
+									<p className="sv-preview-empty-sub">
+										This may take a few seconds
+									</p>
 								</div>
 							) : activeResult ? (
 								<>
@@ -610,20 +732,35 @@ function App() {
 										<img
 											src={ activeResult }
 											className="sv-preview-image"
-											alt={ `${ activeView === 'outside' ? 'Exterior' : 'Interior' } screen preview` }
+											alt={ `${
+												activeView === 'outside'
+													? 'Exterior'
+													: 'Interior'
+											} screen preview` }
 										/>
 									</div>
 									<PanelSliders
 										levels={ activeRetractLevels }
 										onChange={ handleRetractChange }
-										view={ activeView }
+										viewType={ activeView }
 									/>
 								</>
 							) : (
 								<div className="sv-preview-empty">
 									<div className="sv-preview-empty-icon">
-										<svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 1.5 }>
-											<path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z" />
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											className="w-8 h-8"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+											strokeWidth={ 1.5 }
+										>
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z"
+											/>
 										</svg>
 									</div>
 									<p className="sv-preview-empty-text">
@@ -632,40 +769,80 @@ function App() {
 											: 'Upload an interior photo and generate a preview' }
 									</p>
 									<p className="sv-preview-empty-sub">
-										Drag the corner pins to match your opening, then click Generate
+										Drag the corner pins to match your
+										opening, then click Generate
 									</p>
 								</div>
 							) }
 						</div>
 
-						{ /* Action Buttons */ }
 						{ activeResult && (
 							<div className="sv-preview-actions">
 								{ isRecording ? (
 									<div className="sv-recording-status">
 										<div className="sv-spinner w-4 h-4" />
-										Recording… { Math.round( recordingProgress * 100 ) }%
+										Recording…{ ' ' }
+										{ Math.round(
+											recordingProgress * 100
+										) }
+										%
 									</div>
 								) : (
 									<button
-										onClick={ () => handleExportVideo( activeView ) }
+										onClick={ () =>
+											handleExportVideo( activeView )
+										}
 										disabled={ isRecording }
 										className="sv-action-btn sv-action-btn--secondary"
 									>
-										<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
-											<path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											className="w-4 h-4"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+											strokeWidth={ 2 }
+										>
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"
+											/>
 										</svg>
 										Export Video
 									</button>
 								) }
 								<button
-									onClick={ () => downloadImage( activeResult, `${ activeView }-mockup.png` ) }
+									onClick={ () =>
+										downloadImage(
+											activeResult,
+											`${ activeView }-mockup.png`
+										)
+									}
 									className="sv-action-btn sv-action-btn--primary"
 								>
-									<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
-										<path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 12.75l3-3m0 0l-3-3m3 3H9" transform="rotate(180 12 12)" />
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										className="w-4 h-4"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										strokeWidth={ 2 }
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 12.75l3-3m0 0l-3-3m3 3H9"
+											transform="rotate(180 12 12)"
+										/>
 									</svg>
-									Download { activeView === 'outside' ? 'Exterior' : 'Interior' }
+									<span className="hidden sm:inline">
+										Download{ ' ' }
+										{ activeView === 'outside'
+											? 'Exterior'
+											: 'Interior' }
+									</span>
+									<span className="sm:hidden">Download</span>
 								</button>
 							</div>
 						) }
@@ -673,7 +850,6 @@ function App() {
 				</div>
 			</div>
 
-			{ /* Video Preview Modal */ }
 			{ videoPreviewUrl && (
 				<div className="sv-modal-overlay">
 					<div className="sv-modal">
@@ -724,8 +900,20 @@ function App() {
 								} }
 								className="sv-modal-btn sv-modal-btn--primary"
 							>
-								<svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={ 2 }>
-									<path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 12.75l3-3m0 0l-3-3m3 3H9" transform="rotate(180 12 12)" />
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									className="w-3.5 h-3.5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									strokeWidth={ 2 }
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 12.75l3-3m0 0l-3-3m3 3H9"
+										transform="rotate(180 12 12)"
+									/>
 								</svg>
 								Download Video
 							</button>

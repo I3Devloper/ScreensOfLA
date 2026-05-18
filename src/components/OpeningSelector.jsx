@@ -7,19 +7,22 @@
 import { useState, useEffect, useRef, useCallback } from '@wordpress/element';
 
 const PIN_RADIUS = 10;
-const PIN_HIT_RADIUS = 20;
 const SPLIT_HIT_DIST = 12;
 const BEAM_EDGE_HIT_DIST = 14;
 const DEFAULT_BEAM_LEFT = 0.47;
 const DEFAULT_BEAM_RIGHT = 0.53;
 
-// Linear interpolation between two points at fraction t
+const isTouchDevice = () =>
+	typeof window !== 'undefined' &&
+	window.matchMedia( '(pointer: coarse)' ).matches;
+
+const getHitRadiusMultiplier = () => ( isTouchDevice() ? 2.2 : 1 );
+
 const lerp = ( p1, p2, t ) => ( {
 	x: p1.x + ( p2.x - p1.x ) * t,
 	y: p1.y + ( p2.y - p1.y ) * t,
 } );
 
-// Distance from point (px,py) to line segment (x1,y1)-(x2,y2)
 const pointToSegDist = ( px, py, x1, y1, x2, y2 ) => {
 	const dx = x2 - x1,
 		dy = y2 - y1;
@@ -32,7 +35,6 @@ const pointToSegDist = ( px, py, x1, y1, x2, y2 ) => {
 	return Math.hypot( px - ( x1 + t * dx ), py - ( y1 + t * dy ) );
 };
 
-// Project point onto TL→TR line to get fraction (for divider dragging)
 const projectToFraction = ( px, py, tl, tr ) => {
 	const dx = tr.x - tl.x,
 		dy = tr.y - tl.y;
@@ -41,13 +43,24 @@ const projectToFraction = ( px, py, tl, tr ) => {
 	return ( ( px - tl.x ) * dx + ( py - tl.y ) * dy ) / lenSq;
 };
 
-const getMousePos = ( canvas, evt ) => {
+const getPointerPos = ( canvas, evt ) => {
 	const rect = canvas.getBoundingClientRect();
 	const dpr = window.devicePixelRatio || 1;
 	const scaleX = canvas.width / dpr / rect.width;
 	const scaleY = canvas.height / dpr / rect.height;
-	const clientX = evt.touches ? evt.touches[ 0 ].clientX : evt.clientX;
-	const clientY = evt.touches ? evt.touches[ 0 ].clientY : evt.clientY;
+
+	let clientX, clientY;
+	if ( evt.touches && evt.touches.length > 0 ) {
+		clientX = evt.touches[ 0 ].clientX;
+		clientY = evt.touches[ 0 ].clientY;
+	} else if ( evt.changedTouches && evt.changedTouches.length > 0 ) {
+		clientX = evt.changedTouches[ 0 ].clientX;
+		clientY = evt.changedTouches[ 0 ].clientY;
+	} else {
+		clientX = evt.clientX;
+		clientY = evt.clientY;
+	}
+
 	return {
 		x: ( clientX - rect.left ) * scaleX,
 		y: ( clientY - rect.top ) * scaleY,
@@ -60,27 +73,29 @@ const OpeningSelector = ( {
 	imageUrl,
 	onChange,
 	disabled = false,
-	viewType = 'outside',
 } ) => {
 	const canvasRef = useRef( null );
 	const containerRef = useRef( null );
 	const [ imgSize, setImgSize ] = useState( { width: 0, height: 0 } );
 	const [ pins, setPins ] = useState( [] );
 	const [ dividers, setDividers ] = useState( [] );
-	const [ beams, setBeams ] = useState( [] ); // {left, right}
-	const [ dragging, setDragging ] = useState( null ); // { type: 'pin'|'split'|'beamLeft'|'beamRight', index }
+	const [ beams, setBeams ] = useState( [] );
+	const [ dragging, setDragging ] = useState( null );
+	const [ isTouch, setIsTouch ] = useState( false );
 	const imageRef = useRef( null );
 	const onChangeRef = useRef( onChange );
 	onChangeRef.current = onChange;
 
-	// Emit changes to parent
+	useEffect( () => {
+		setIsTouch( isTouchDevice() );
+	}, [] );
+
 	const emitChange = useCallback( ( newPins, newDividers, newBeams ) => {
 		if ( newPins.length === 4 ) {
 			onChangeRef.current( newPins, newDividers || [], newBeams || [] );
 		}
 	}, [] );
 
-	// Load image and auto-place pins
 	useEffect( () => {
 		if ( ! imageUrl ) return;
 		let cancelled = false;
@@ -111,8 +126,6 @@ const OpeningSelector = ( {
 			cancelled = true;
 		};
 	}, [ imageUrl ] );
-
-	// ── Canvas drawing ────────────────────────────────────────────────
 
 	useEffect( () => {
 		const canvas = canvasRef.current;
@@ -146,7 +159,8 @@ const OpeningSelector = ( {
 			y: ( pin.y / 100 ) * H,
 		} ) );
 
-		// Draw polygon outline
+		const hitMult = getHitRadiusMultiplier();
+
 		ctx.save();
 		ctx.beginPath();
 		p.forEach( ( pt, i ) => {
@@ -162,7 +176,6 @@ const OpeningSelector = ( {
 		ctx.fill();
 		ctx.restore();
 
-		// Draw split lines (amber/yellow)
 		const sortedDivs = [ ...dividers ].sort( ( a, b ) => a - b );
 		sortedDivs.forEach( ( t, idx ) => {
 			const top = lerp( p[ 0 ], p[ 1 ], t );
@@ -181,8 +194,9 @@ const OpeningSelector = ( {
 			ctx.restore();
 
 			const mid = lerp( top, bottom, 0.5 );
+			const handleRadius = 8 * hitMult;
 			ctx.beginPath();
-			ctx.arc( mid.x, mid.y, 8, 0, Math.PI * 2 );
+			ctx.arc( mid.x, mid.y, handleRadius, 0, Math.PI * 2 );
 			ctx.fillStyle = isDraggingThis ? '#dc2626' : '#f59e0b';
 			ctx.fill();
 			ctx.strokeStyle = '#fff';
@@ -190,13 +204,12 @@ const OpeningSelector = ( {
 			ctx.stroke();
 
 			ctx.fillStyle = '#fff';
-			ctx.font = 'bold 10px sans-serif';
+			ctx.font = `bold ${ Math.round( 10 * hitMult ) }px sans-serif`;
 			ctx.textAlign = 'center';
 			ctx.textBaseline = 'middle';
 			ctx.fillText( '⇔', mid.x, mid.y );
 		} );
 
-		// Draw beam lines (coral/red double lines with independent handles)
 		const sortedBeams = [ ...beams ].sort( ( a, b ) => a.left - b.left );
 		sortedBeams.forEach( ( beam, idx ) => {
 			const leftTop = lerp( p[ 0 ], p[ 1 ], beam.left );
@@ -208,7 +221,6 @@ const OpeningSelector = ( {
 			const isDraggingRight =
 				dragging?.type === 'beamRight' && dragging.index === idx;
 
-			// Left beam edge
 			ctx.save();
 			ctx.beginPath();
 			ctx.moveTo( leftTop.x, leftTop.y );
@@ -219,7 +231,6 @@ const OpeningSelector = ( {
 			ctx.stroke();
 			ctx.restore();
 
-			// Right beam edge
 			ctx.save();
 			ctx.beginPath();
 			ctx.moveTo( rightTop.x, rightTop.y );
@@ -230,7 +241,6 @@ const OpeningSelector = ( {
 			ctx.stroke();
 			ctx.restore();
 
-			// Beam gap indicator
 			ctx.save();
 			ctx.beginPath();
 			ctx.moveTo( leftTop.x, leftTop.y );
@@ -242,64 +252,70 @@ const OpeningSelector = ( {
 			ctx.fill();
 			ctx.restore();
 
-			// Left edge handle
 			const leftMid = lerp( leftTop, leftBot, 0.5 );
+			const handleRadius = 8 * hitMult;
 			ctx.beginPath();
-			ctx.arc( leftMid.x, leftMid.y, 8, 0, Math.PI * 2 );
+			ctx.arc( leftMid.x, leftMid.y, handleRadius, 0, Math.PI * 2 );
 			ctx.fillStyle = isDraggingLeft ? '#dc2626' : '#ef4444';
 			ctx.fill();
 			ctx.strokeStyle = '#fff';
 			ctx.lineWidth = 2.5;
 			ctx.stroke();
 			ctx.fillStyle = '#fff';
-			ctx.font = 'bold 9px sans-serif';
+			ctx.font = `bold ${ Math.round( 9 * hitMult ) }px sans-serif`;
 			ctx.textAlign = 'center';
 			ctx.textBaseline = 'middle';
 			ctx.fillText( '◀', leftMid.x, leftMid.y );
 
-			// Right edge handle
 			const rightMid = lerp( rightTop, rightBot, 0.5 );
 			ctx.beginPath();
-			ctx.arc( rightMid.x, rightMid.y, 8, 0, Math.PI * 2 );
+			ctx.arc( rightMid.x, rightMid.y, handleRadius, 0, Math.PI * 2 );
 			ctx.fillStyle = isDraggingRight ? '#dc2626' : '#ef4444';
 			ctx.fill();
 			ctx.strokeStyle = '#fff';
 			ctx.lineWidth = 2.5;
 			ctx.stroke();
 			ctx.fillStyle = '#fff';
-			ctx.font = 'bold 9px sans-serif';
+			ctx.font = `bold ${ Math.round( 9 * hitMult ) }px sans-serif`;
 			ctx.textAlign = 'center';
 			ctx.textBaseline = 'middle';
 			ctx.fillText( '▶', rightMid.x, rightMid.y );
 		} );
 
-		// Draw pin circles
 		pins.forEach( ( pin ) => {
 			const x = ( pin.x / 100 ) * W,
 				y = ( pin.y / 100 ) * H;
 			const isDraggingThis =
 				dragging?.type === 'pin' && pins[ dragging.index ] === pin;
+			const pinRadius = PIN_RADIUS * hitMult;
 
 			ctx.beginPath();
-			ctx.arc( x, y, PIN_RADIUS, 0, Math.PI * 2 );
+			ctx.arc( x, y, pinRadius, 0, Math.PI * 2 );
 			ctx.fillStyle = isDraggingThis ? '#339966' : '#ffffff';
 			ctx.fill();
 			ctx.strokeStyle = '#1e293b';
 			ctx.lineWidth = 2;
 			ctx.stroke();
 
+			if ( isDraggingThis ) {
+				ctx.beginPath();
+				ctx.arc( x, y, pinRadius + 4, 0, Math.PI * 2 );
+				ctx.strokeStyle = 'rgba(51, 153, 102, 0.4)';
+				ctx.lineWidth = 2;
+				ctx.stroke();
+			}
+
 			ctx.fillStyle = isDraggingThis ? '#fff' : '#1e293b';
-			ctx.font = 'bold 10px sans-serif';
+			ctx.font = `bold ${ Math.round( 10 * hitMult ) }px sans-serif`;
 			ctx.textAlign = 'center';
 			ctx.textBaseline = 'middle';
 			ctx.fillText( pin.label, x, y );
 		} );
 	}, [ imgSize, pins, dividers, beams, dragging ] );
 
-	// ── Mouse / touch handlers ────────────────────────────────────────
-
-	const handleMouseDown = useCallback(
+	const handlePointerDown = useCallback(
 		( e ) => {
+			if ( e.touches && e.touches.length > 1 ) return;
 			e.preventDefault();
 			if (
 				disabled ||
@@ -309,25 +325,28 @@ const OpeningSelector = ( {
 			)
 				return;
 
-			const pos = getMousePos( canvasRef.current, e );
+			const pos = getPointerPos( canvasRef.current, e );
 			const { width, height } = imgSize;
 			const p = pins.map( ( pin ) => ( {
 				x: ( pin.x / 100 ) * width,
 				y: ( pin.y / 100 ) * height,
 			} ) );
 
-			// 1. Check pins first
+			const hitMult = getHitRadiusMultiplier();
+			const pinHitRadius = 20 * hitMult;
+			const splitHitDist = SPLIT_HIT_DIST * hitMult;
+			const beamHitDist = BEAM_EDGE_HIT_DIST * hitMult;
+
 			for ( let i = 0; i < 4; i++ ) {
 				if (
 					Math.hypot( pos.x - p[ i ].x, pos.y - p[ i ].y ) <=
-					PIN_HIT_RADIUS
+					pinHitRadius
 				) {
 					setDragging( { type: 'pin', index: i } );
 					return;
 				}
 			}
 
-			// 2. Check beam edges (left and right separately)
 			const sortedBeams = [ ...beams ].sort(
 				( a, b ) => a.left - b.left
 			);
@@ -339,34 +358,46 @@ const OpeningSelector = ( {
 				const rightBot = lerp( p[ 3 ], p[ 2 ], beam.right );
 
 				const leftDist = pointToSegDist(
-					pos.x, pos.y,
-					leftTop.x, leftTop.y, leftBot.x, leftBot.y
+					pos.x,
+					pos.y,
+					leftTop.x,
+					leftTop.y,
+					leftBot.x,
+					leftBot.y
 				);
-				if ( leftDist <= BEAM_EDGE_HIT_DIST ) {
+				if ( leftDist <= beamHitDist ) {
 					setDragging( { type: 'beamLeft', index: i } );
 					return;
 				}
 
 				const rightDist = pointToSegDist(
-					pos.x, pos.y,
-					rightTop.x, rightTop.y, rightBot.x, rightBot.y
+					pos.x,
+					pos.y,
+					rightTop.x,
+					rightTop.y,
+					rightBot.x,
+					rightBot.y
 				);
-				if ( rightDist <= BEAM_EDGE_HIT_DIST ) {
+				if ( rightDist <= beamHitDist ) {
 					setDragging( { type: 'beamRight', index: i } );
 					return;
 				}
 			}
 
-			// 3. Check splits
 			const sortedDivs = [ ...dividers ].sort( ( a, b ) => a - b );
 			for ( let i = 0; i < sortedDivs.length; i++ ) {
 				const t = sortedDivs[ i ];
 				const top = lerp( p[ 0 ], p[ 1 ], t );
 				const bottom = lerp( p[ 3 ], p[ 2 ], t );
 				const dist = pointToSegDist(
-					pos.x, pos.y, top.x, top.y, bottom.x, bottom.y
+					pos.x,
+					pos.y,
+					top.x,
+					top.y,
+					bottom.x,
+					bottom.y
 				);
-				if ( dist <= SPLIT_HIT_DIST ) {
+				if ( dist <= splitHitDist ) {
 					setDragging( { type: 'split', index: i } );
 					return;
 				}
@@ -375,16 +406,23 @@ const OpeningSelector = ( {
 		[ disabled, pins, dividers, beams, imgSize ]
 	);
 
-	const handleMouseMove = useCallback(
+	const handlePointerMove = useCallback(
 		( e ) => {
+			if ( e.touches && e.touches.length > 1 ) return;
 			e.preventDefault();
 			if ( ! dragging || ! canvasRef.current ) return;
-			const pos = getMousePos( canvasRef.current, e );
+			const pos = getPointerPos( canvasRef.current, e );
 			const { width, height } = imgSize;
 
 			if ( dragging.type === 'pin' ) {
-				const clampedX = Math.max( 0, Math.min( 100, pct( pos.x, width ) ) );
-				const clampedY = Math.max( 0, Math.min( 100, pct( pos.y, height ) ) );
+				const clampedX = Math.max(
+					0,
+					Math.min( 100, pct( pos.x, width ) )
+				);
+				const clampedY = Math.max(
+					0,
+					Math.min( 100, pct( pos.y, height ) )
+				);
 				const newPins = [ ...pins ];
 				newPins[ dragging.index ] = {
 					...newPins[ dragging.index ],
@@ -413,7 +451,10 @@ const OpeningSelector = ( {
 				].sort( ( a, b ) => a - b );
 
 				for ( let i = 0; i < staticBoundaries.length - 1; i++ ) {
-					if ( t >= staticBoundaries[ i ] && t <= staticBoundaries[ i + 1 ] ) {
+					if (
+						t >= staticBoundaries[ i ] &&
+						t <= staticBoundaries[ i + 1 ]
+					) {
 						t = Math.max(
 							staticBoundaries[ i ] + 0.03,
 							Math.min( staticBoundaries[ i + 1 ] - 0.03, t )
@@ -436,7 +477,9 @@ const OpeningSelector = ( {
 				} ) );
 				let t = projectToFraction( pos.x, pos.y, p[ 0 ], p[ 1 ] );
 
-				const sortedBeams = [ ...beams ].sort( ( a, b ) => a.left - b.left );
+				const sortedBeams = [ ...beams ].sort(
+					( a, b ) => a.left - b.left
+				);
 				const origIdx = dragging.index;
 				const beam = sortedBeams[ origIdx ];
 				const staticBoundaries = [
@@ -448,12 +491,15 @@ const OpeningSelector = ( {
 					...sortedBeams
 						.filter( ( _, i ) => i !== origIdx )
 						.map( ( b ) => b.right ),
-					beam.right, // can't cross own right edge
+					beam.right,
 					1,
 				].sort( ( a, b ) => a - b );
 
 				for ( let i = 0; i < staticBoundaries.length - 1; i++ ) {
-					if ( t >= staticBoundaries[ i ] && t <= staticBoundaries[ i + 1 ] ) {
+					if (
+						t >= staticBoundaries[ i ] &&
+						t <= staticBoundaries[ i + 1 ]
+					) {
 						t = Math.max(
 							staticBoundaries[ i ] + 0.03,
 							Math.min( staticBoundaries[ i + 1 ] - 0.03, t )
@@ -476,7 +522,9 @@ const OpeningSelector = ( {
 				} ) );
 				let t = projectToFraction( pos.x, pos.y, p[ 0 ], p[ 1 ] );
 
-				const sortedBeams = [ ...beams ].sort( ( a, b ) => a.left - b.left );
+				const sortedBeams = [ ...beams ].sort(
+					( a, b ) => a.left - b.left
+				);
 				const origIdx = dragging.index;
 				const beam = sortedBeams[ origIdx ];
 				const staticBoundaries = [
@@ -488,12 +536,15 @@ const OpeningSelector = ( {
 					...sortedBeams
 						.filter( ( _, i ) => i !== origIdx )
 						.map( ( b ) => b.right ),
-					beam.left, // can't cross own left edge
+					beam.left,
 					1,
 				].sort( ( a, b ) => a - b );
 
 				for ( let i = 0; i < staticBoundaries.length - 1; i++ ) {
-					if ( t >= staticBoundaries[ i ] && t <= staticBoundaries[ i + 1 ] ) {
+					if (
+						t >= staticBoundaries[ i ] &&
+						t <= staticBoundaries[ i + 1 ]
+					) {
 						t = Math.max(
 							staticBoundaries[ i ] + 0.03,
 							Math.min( staticBoundaries[ i + 1 ] - 0.03, t )
@@ -512,12 +563,10 @@ const OpeningSelector = ( {
 		[ dragging, pins, dividers, beams, imgSize, emitChange ]
 	);
 
-	const handleMouseUp = useCallback( ( e ) => {
+	const handlePointerUp = useCallback( ( e ) => {
 		if ( e ) e.preventDefault();
 		setDragging( null );
 	}, [] );
-
-	// ── Button handlers ───────────────────────────────────────────────
 
 	const handleAddSplit = useCallback( () => {
 		const allBoundaries = [
@@ -605,6 +654,10 @@ const OpeningSelector = ( {
 		emitChange( defaultPins, [], [] );
 	}, [ emitChange ] );
 
+	const hint = isTouch
+		? 'Tap and drag the corner pins to match your patio opening'
+		: 'Drag the corner pins to match your patio opening';
+
 	return (
 		<div className="opening-selector" ref={ containerRef }>
 			<div className="opening-selector-toolbar">
@@ -663,9 +716,7 @@ const OpeningSelector = ( {
 			</div>
 
 			<p className="opening-selector-hint">
-				{ pins.length === 4
-					? 'Drag the corner pins to match your patio opening'
-					: 'Loading…' }
+				{ pins.length === 4 ? hint : 'Loading…' }
 			</p>
 
 			{ ( dividers.length > 0 || beams.length > 0 ) && (
@@ -676,15 +727,16 @@ const OpeningSelector = ( {
 					{ dividers.length > 0 && (
 						<span>
 							{ dividers.length } split
-							{ dividers.length > 1 ? 's' : '' }{' '}
+							{ dividers.length > 1 ? 's' : '' }{ ' ' }
 						</span>
 					) }
 					{ beams.length > 0 && (
 						<span>
-							{ beams.length } beam{ beams.length > 1 ? 's' : '' }{' '}
+							{ beams.length } beam{ beams.length > 1 ? 's' : '' }{ ' ' }
 						</span>
 					) }
-					— drag handles to reposition edges
+					— { isTouch ? 'tap and drag' : 'drag' } handles to
+					reposition edges
 				</p>
 			) }
 
@@ -692,13 +744,13 @@ const OpeningSelector = ( {
 				<canvas
 					ref={ canvasRef }
 					className="opening-selector-canvas"
-					onMouseDown={ handleMouseDown }
-					onMouseMove={ handleMouseMove }
-					onMouseUp={ handleMouseUp }
-					onMouseLeave={ handleMouseUp }
-					onTouchStart={ handleMouseDown }
-					onTouchMove={ handleMouseMove }
-					onTouchEnd={ handleMouseUp }
+					onMouseDown={ handlePointerDown }
+					onMouseMove={ handlePointerMove }
+					onMouseUp={ handlePointerUp }
+					onMouseLeave={ handlePointerUp }
+					onTouchStart={ handlePointerDown }
+					onTouchMove={ handlePointerMove }
+					onTouchEnd={ handlePointerUp }
 					style={ {
 						width: '100%',
 						height: 'auto',

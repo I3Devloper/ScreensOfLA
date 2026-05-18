@@ -415,7 +415,8 @@ export const renderScreenOverlay = ( {
 
 	// Helper to get retract level for a panel index
 	const getRetractLevel = ( panelIdx ) => {
-		if ( ! Array.isArray( retractLevels ) || retractLevels.length === 0 ) return 1;
+		if ( ! Array.isArray( retractLevels ) || retractLevels.length === 0 )
+			return 1;
 		const idx = Math.min( panelIdx, retractLevels.length - 1 );
 		return Math.max( 0, Math.min( 1, retractLevels[ idx ] ?? 1 ) );
 	};
@@ -438,8 +439,8 @@ export const renderScreenOverlay = ( {
 		const panelPts = [
 			panelTL,
 			panelTR,
-			lerp( panelBR, panelTR, r ),
-			lerp( panelBL, panelTL, r ),
+			lerp( panelBR, panelTR, 1 - r ),
+			lerp( panelBL, panelTL, 1 - r ),
 		];
 
 		drawFabricPanel(
