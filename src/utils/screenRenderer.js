@@ -35,6 +35,7 @@ const darken = ( hex, amount ) => lighten( hex, -amount );
 
 /**
  * Resolves a color name or value to a hex string.
+ * @param colorName
  */
 const normalizeColor = ( colorName ) => {
 	const map = {
@@ -67,7 +68,9 @@ const normalizeColor = ( colorName ) => {
 		mocha: '#5D3A1A',
 	};
 	const cleaned = ( colorName || 'dark bronze' ).toLowerCase().trim();
-	if ( map[ cleaned ] ) return map[ cleaned ];
+	if ( map[ cleaned ] ) {
+		return map[ cleaned ];
+	}
 	if ( /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test( cleaned ) ) {
 		if ( cleaned.length === 4 ) {
 			return `#${ cleaned[ 1 ] }${ cleaned[ 1 ] }${ cleaned[ 2 ] }${ cleaned[ 2 ] }${ cleaned[ 3 ] }${ cleaned[ 3 ] }`;
@@ -82,7 +85,9 @@ const normalizeColor = ( colorName ) => {
 		pctx.fillStyle = '#000000';
 		pctx.fillStyle = cleaned;
 		const result = pctx.fillStyle;
-		if ( result && result !== '#000000' ) return result;
+		if ( result && result !== '#000000' ) {
+			return result;
+		}
 	} catch {
 		/* ignore */
 	}
@@ -99,6 +104,13 @@ const lerp = ( p1, p2, t ) => ( {
 
 /**
  * Draws a 3D metallic bar along a line segment.
+ * @param ctx
+ * @param x1
+ * @param y1
+ * @param x2
+ * @param y2
+ * @param thickness
+ * @param baseColor
  */
 const drawEdgeBar = ( ctx, x1, y1, x2, y2, thickness, baseColor ) => {
 	ctx.save();
@@ -167,6 +179,9 @@ const drawEdgeBar = ( ctx, x1, y1, x2, y2, thickness, baseColor ) => {
 
 /**
  * Creates a seamless woven cloth pattern canvas
+ * @param hexColor
+ * @param isInside
+ * @param panelScale
  */
 const createClothPattern = ( hexColor, isInside, panelScale ) => {
 	const pCanvas = document.createElement( 'canvas' );
@@ -211,6 +226,13 @@ const createClothPattern = ( hexColor, isInside, panelScale ) => {
 
 /**
  * Draws a fabric fill (clipped to a 4-point polygon).
+ * @param ctx
+ * @param panelPts
+ * @param color
+ * @param isInside
+ * @param visibility
+ * @param width
+ * @param height
  */
 const drawFabricPanel = (
 	ctx,
@@ -230,8 +252,11 @@ const drawFabricPanel = (
 		maxY = -Infinity;
 
 	panelPts.forEach( ( p, i ) => {
-		if ( i === 0 ) ctx.moveTo( p.x, p.y );
-		else ctx.lineTo( p.x, p.y );
+		if ( i === 0 ) {
+			ctx.moveTo( p.x, p.y );
+		} else {
+			ctx.lineTo( p.x, p.y );
+		}
 		minX = Math.min( minX, p.x );
 		maxX = Math.max( maxX, p.x );
 		minY = Math.min( minY, p.y );
@@ -258,8 +283,6 @@ const drawFabricPanel = (
 		ctx.fillStyle = ctx.createPattern( patternCanvas, 'repeat' );
 		ctx.fillRect( 0, 0, width, height );
 
-		const minY = Math.min( ...panelPts.map( ( p ) => p.y ) );
-		const maxY = Math.max( ...panelPts.map( ( p ) => p.y ) );
 		const lightGrad = ctx.createLinearGradient( 0, minY, 0, maxY );
 		lightGrad.addColorStop( 0, 'rgba(255,255,255,0.05)' );
 		lightGrad.addColorStop( 0.3, 'rgba(0,0,0,0)' );
@@ -284,6 +307,13 @@ const drawFabricPanel = (
 
 /**
  * Draws a 3D structural pillar at a divider position.
+ * @param ctx
+ * @param x1
+ * @param y1
+ * @param x2
+ * @param y2
+ * @param thickness
+ * @param baseColor
  */
 const drawPillar = ( ctx, x1, y1, x2, y2, thickness, baseColor ) => {
 	ctx.save();
@@ -353,15 +383,17 @@ const drawPillar = ( ctx, x1, y1, x2, y2, thickness, baseColor ) => {
  * Renders a screen overlay with support for multi-panel splits and beams.
  *
  * @param {Object} params
- * @param {number} params.width - canvas width
- * @param {number} params.height - canvas height
- * @param {Array} params.corners - [{x%, y%, label}, ...] TL, TR, BR, BL
- * @param {Array} params.dividers - [0.33, 0.66, ...] fractions for vertical splits
- * @param {Array} params.beams - [{left, right}, ...] structural gaps
- * @param {string} params.viewType - 'inside' | 'outside'
- * @param {string} params.screenColor - e.g. 'dark bronze'
+ * @param {number} params.width              - canvas width
+ * @param {number} params.height             - canvas height
+ * @param {Array}  params.corners            - [{x%, y%, label}, ...] TL, TR, BR, BL
+ * @param {Array}  params.dividers           - [0.33, 0.66, ...] fractions for vertical splits
+ * @param {Array}  params.beams              - [{left, right}, ...] structural gaps
+ * @param {string} params.viewType           - 'inside' | 'outside'
+ * @param {string} params.screenColor        - e.g. 'dark bronze'
  * @param {number} params.interiorVisibility - 90 or 95
- * @returns {HTMLCanvasElement}
+ * @param          params.retractLevels
+ * @param          params.targetCanvas
+ * @return {HTMLCanvasElement}
  */
 export const renderScreenOverlay = ( {
 	width,
@@ -415,8 +447,9 @@ export const renderScreenOverlay = ( {
 
 	// Helper to get retract level for a panel index
 	const getRetractLevel = ( panelIdx ) => {
-		if ( ! Array.isArray( retractLevels ) || retractLevels.length === 0 )
+		if ( ! Array.isArray( retractLevels ) || retractLevels.length === 0 ) {
 			return 1;
+		}
 		const idx = Math.min( panelIdx, retractLevels.length - 1 );
 		return Math.max( 0, Math.min( 1, retractLevels[ idx ] ?? 1 ) );
 	};
@@ -428,7 +461,9 @@ export const renderScreenOverlay = ( {
 		const tLeft = allBoundaries[ i ];
 		const tRight = allBoundaries[ i + 1 ];
 
-		if ( isBeamGap( tLeft, tRight ) ) continue;
+		if ( isBeamGap( tLeft, tRight ) ) {
+			continue;
+		}
 
 		const r = getRetractLevel( panelIdx );
 		const panelTL = lerp( pts[ 0 ], pts[ 1 ], tLeft );
@@ -467,13 +502,14 @@ export const renderScreenOverlay = ( {
 	);
 	const railThick = Math.max( 6, Math.round( 14 * scale * sizeMultiplier ) );
 	const trackThick = Math.max( 7, Math.round( 14 * scale * sizeMultiplier ) );
-	const postThick = Math.max( 6, Math.round( 12 * scale * sizeMultiplier ) );
 
 	const extendAsym = ( ax, ay, bx, by, startAmt, endAmt ) => {
 		const dx = bx - ax,
 			dy = by - ay;
 		const len = Math.sqrt( dx * dx + dy * dy );
-		if ( len < 1 ) return { x1: ax, y1: ay, x2: bx, y2: by };
+		if ( len < 1 ) {
+			return { x1: ax, y1: ay, x2: bx, y2: by };
+		}
 		const ux = dx / len,
 			uy = dy / len;
 		return {
@@ -487,7 +523,14 @@ export const renderScreenOverlay = ( {
 		extendAsym( ax, ay, bx, by, amt, amt );
 
 	const drawTrack = ( x1, y1, x2, y2 ) => {
-		const ext = extendAsym( x1, y1, x2, y2, cassetteThick * 0.6, trackThick * 0.4 );
+		const ext = extendAsym(
+			x1,
+			y1,
+			x2,
+			y2,
+			cassetteThick * 0.6,
+			trackThick * 0.4
+		);
 		drawEdgeBar(
 			ctx,
 			ext.x1,
@@ -573,7 +616,9 @@ export const renderScreenOverlay = ( {
 			const tLeft = allBoundaries[ i ];
 			const tRight = allBoundaries[ i + 1 ];
 
-			if ( isBeamGap( tLeft, tRight ) ) continue;
+			if ( isBeamGap( tLeft, tRight ) ) {
+				continue;
+			}
 
 			const r = getRetractLevel( panelIdx );
 			const panelTL = lerp( pts[ 0 ], pts[ 1 ], tLeft );

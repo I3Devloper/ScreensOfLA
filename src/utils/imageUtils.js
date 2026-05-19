@@ -17,6 +17,8 @@ const loadImage = ( src ) =>
 /**
  * Resizes an image to max MAX_DIM while preserving aspect ratio.
  * Returns a canvas element.
+ * @param src
+ * @param maxDim
  */
 const resizeImageToCanvas = async ( src, maxDim = MAX_DIM ) => {
 	const img = await loadImage( src );
@@ -44,6 +46,7 @@ const resizeImageToCanvas = async ( src, maxDim = MAX_DIM ) => {
 /**
  * Creates a working copy of the original image at max 1024px.
  * All downstream processing uses this consistent resolution.
+ * @param imageUrl
  */
 export const createWorkingImage = async ( imageUrl ) => {
 	const canvas = await resizeImageToCanvas( imageUrl, MAX_DIM );
@@ -54,6 +57,8 @@ export const createWorkingImage = async ( imageUrl ) => {
  * Bakes the screen overlay onto the original image at full opacity.
  * Both images MUST already be at the SAME dimensions.
  * Returns a single composite data URL where the screen is already placed.
+ * @param originalUrl
+ * @param overlayUrl
  */
 export const bakeOverlay = async ( originalUrl, overlayUrl ) => {
 	const [ origImg, overlayImg ] = await Promise.all( [

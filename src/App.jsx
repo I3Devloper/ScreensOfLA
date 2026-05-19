@@ -63,15 +63,21 @@ const calcPanelCount = ( dividers, beams ) => {
 			( beam ) =>
 				tLeft >= beam.left - 0.001 && tRight <= beam.right + 0.001
 		);
-		if ( ! isBeamGap ) count++;
+		if ( ! isBeamGap ) {
+			count++;
+		}
 	}
 	return Math.max( 1, count );
 };
 
 const syncRetractLevels = ( currentLevels, panelCount ) => {
 	const levels = [ ...( currentLevels || [] ) ];
-	while ( levels.length < panelCount ) levels.push( 0 );
-	if ( levels.length > panelCount ) levels.length = panelCount;
+	while ( levels.length < panelCount ) {
+		levels.push( 0 );
+	}
+	if ( levels.length > panelCount ) {
+		levels.length = panelCount;
+	}
 	return levels;
 };
 
@@ -166,7 +172,9 @@ function App() {
 
 			view.update( { retractLevels: newLevels } );
 
-			if ( ! view.state.result || ! view.state.workingUrl ) return;
+			if ( ! view.state.result || ! view.state.workingUrl ) {
+				return;
+			}
 
 			if ( reloadTimersRef.current[ key ] ) {
 				clearTimeout( reloadTimersRef.current[ key ] );
@@ -225,11 +233,6 @@ function App() {
 			const dividers = view.state.dividers;
 			const beams = view.state.beams || [];
 			const workingUrl = view.state.workingUrl;
-			const panelCount = calcPanelCount( dividers, beams );
-			const retractLevels = syncRetractLevels(
-				view.state.retractLevels,
-				panelCount
-			);
 
 			if (
 				! targetImage ||
@@ -248,6 +251,12 @@ function App() {
 				} );
 				return;
 			}
+
+			const panelCount = calcPanelCount( dividers, beams );
+			const retractLevels = syncRetractLevels(
+				view.state.retractLevels,
+				panelCount
+			);
 
 			view.update( {
 				isGenerating: true,
@@ -309,7 +318,9 @@ function App() {
 			const view = isOutside ? outside : inside;
 			const workingUrl = view.state.workingUrl;
 
-			if ( ! workingUrl ) return;
+			if ( ! workingUrl ) {
+				return;
+			}
 
 			setIsRecording( true );
 			setRecordingProgress( 0 );
@@ -333,9 +344,9 @@ function App() {
 				setPreviewTab( 'video' );
 			} catch ( err ) {
 				console.error( 'Video export failed:', err );
-				alert(
-					'Video export failed. Please try again in a supported browser (Chrome, Edge, Firefox).'
-				);
+				view.update( {
+					error: 'Video export failed. Please try again in a supported browser (Chrome, Edge, Firefox).',
+				} );
 			} finally {
 				setIsRecording( false );
 				setRecordingProgress( 0 );
@@ -365,24 +376,34 @@ function App() {
 		setPreviewTab( tab );
 	}, [] );
 
-	const handleActiveViewChange = useCallback( ( view ) => {
-		if ( videoRef.current ) videoRef.current.pause();
-		if ( videoPreviewUrl ) {
-			URL.revokeObjectURL( videoPreviewUrl );
-			setVideoPreviewUrl( null );
-			setVideoPreviewFilename( '' );
-		}
-		setPreviewTab( 'image' );
-		setActiveView( view );
-	}, [ videoPreviewUrl ] );
+	const handleActiveViewChange = useCallback(
+		( view ) => {
+			if ( videoRef.current ) {
+				videoRef.current.pause();
+			}
+			if ( videoPreviewUrl ) {
+				URL.revokeObjectURL( videoPreviewUrl );
+				setVideoPreviewUrl( null );
+				setVideoPreviewFilename( '' );
+			}
+			setPreviewTab( 'image' );
+			setActiveView( view );
+		},
+		[ videoPreviewUrl ]
+	);
 
 	const PanelSliders = ( { levels, onChange, viewType } ) => {
-		if ( ! activeResult || levels.length === 0 ) return null;
+		if ( ! activeResult || levels.length === 0 ) {
+			return null;
+		}
 
 		const stepSlider = ( idx, delta ) => {
 			const level = levels[ idx ] ?? 0;
 			const currentDisplay = Math.round( ( 1 - level ) * 100 );
-			const nextDisplay = Math.max( 0, Math.min( 100, currentDisplay + delta ) );
+			const nextDisplay = Math.max(
+				0,
+				Math.min( 100, currentDisplay + delta )
+			);
 			const newLevels = [ ...levels ];
 			newLevels[ idx ] = 1 - nextDisplay / 100;
 			onChange( viewType, newLevels );
@@ -433,9 +454,11 @@ function App() {
 											aria-valuetext={ `${ displayPct }% closed` }
 											onChange={ ( e ) => {
 												const sliderVal =
-													Number( e.target.value ) / 100;
+													Number( e.target.value ) /
+													100;
 												const newLevels = [ ...levels ];
-												newLevels[ idx ] = 1 - sliderVal;
+												newLevels[ idx ] =
+													1 - sliderVal;
 												onChange( viewType, newLevels );
 											} }
 											className="sv-panel-slider-input"
@@ -624,6 +647,115 @@ function App() {
 		</div>
 	);
 
+	const renderPreviewContent = () => {
+		if ( activeIsGenerating ) {
+			return (
+				<div className="sv-preview-empty">
+					<div className="sv-spinner w-10 h-10" />
+					<p className="sv-preview-empty-text">
+						Applying screen overlay…
+					</p>
+					<p className="sv-preview-empty-sub">
+						This may take a few seconds
+					</p>
+				</div>
+			);
+		}
+		if ( activeResult && previewTab === 'video' ) {
+			return (
+				<div className="sv-preview-video-area">
+					{ videoPreviewUrl ? (
+						<video
+							ref={ videoRef }
+							src={ videoPreviewUrl }
+							className="sv-preview-video-player"
+							controls
+							autoPlay
+							playsInline
+						/>
+					) : (
+						<div className="sv-preview-empty">
+							<div className="sv-preview-empty-icon">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									className="w-8 h-8"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									strokeWidth={ 1.5 }
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"
+									/>
+								</svg>
+							</div>
+							<p className="sv-preview-empty-text">
+								No video yet
+							</p>
+							<p className="sv-preview-empty-sub">
+								Click Export Video below to record a screen
+								animation
+							</p>
+						</div>
+					) }
+				</div>
+			);
+		}
+		if ( activeResult ) {
+			return (
+				<>
+					<div className="sv-preview-image-wrap">
+						<img
+							src={ activeResult }
+							className="sv-preview-image"
+							alt={ `${
+								activeView === 'outside'
+									? 'Exterior'
+									: 'Interior'
+							} screen preview` }
+						/>
+					</div>
+					<PanelSliders
+						levels={ activeRetractLevels }
+						onChange={ handleRetractChange }
+						viewType={ activeView }
+					/>
+				</>
+			);
+		}
+		return (
+			<div className="sv-preview-empty">
+				<div className="sv-preview-empty-icon">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						className="w-8 h-8"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						strokeWidth={ 1.5 }
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z"
+						/>
+					</svg>
+				</div>
+				<p className="sv-preview-empty-text">
+					{ activeView === 'outside'
+						? 'Upload an exterior photo and generate a preview'
+						: 'Upload an interior photo and generate a preview' }
+				</p>
+				<p className="sv-preview-empty-sub">
+					Drag the corner pins to match your opening, then click
+					Generate
+				</p>
+			</div>
+		);
+	};
+
 	return (
 		<div className="screen-visualizer">
 			<div className="sv-header">
@@ -637,9 +769,9 @@ function App() {
 
 			<div className="sv-settings-bar">
 				<div className="sv-settings-group">
-					<label className="sv-settings-label">
+					<span className="sv-settings-label">
 						Screen Frame Color
-					</label>
+					</span>
 					<div className="sv-color-swatches">
 						{ PRESET_COLORS.map( ( color ) => (
 							<button
@@ -769,157 +901,65 @@ function App() {
 							  ) }
 					</div>
 
-				<div className="sv-preview-col">
-					{ activeResult && (
-						<div className="sv-preview-tab-bar">
-							<button
-								onClick={ () => handlePreviewTabChange( 'image' ) }
-								className={ `sv-preview-tab ${
-									previewTab === 'image'
-										? 'sv-preview-tab--active'
-										: ''
-								}` }
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									className="w-4 h-4"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-									strokeWidth={ 2 }
+					<div className="sv-preview-col">
+						{ activeResult && (
+							<div className="sv-preview-tab-bar">
+								<button
+									onClick={ () =>
+										handlePreviewTabChange( 'image' )
+									}
+									className={ `sv-preview-tab ${
+										previewTab === 'image'
+											? 'sv-preview-tab--active'
+											: ''
+									}` }
 								>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z"
-									/>
-								</svg>
-								Image
-							</button>
-							<button
-								onClick={ () => handlePreviewTabChange( 'video' ) }
-								className={ `sv-preview-tab ${
-									previewTab === 'video'
-										? 'sv-preview-tab--active'
-										: ''
-								}` }
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									className="w-4 h-4"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-									strokeWidth={ 2 }
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										className="w-4 h-4"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										strokeWidth={ 2 }
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z"
+										/>
+									</svg>
+									Image
+								</button>
+								<button
+									onClick={ () =>
+										handlePreviewTabChange( 'video' )
+									}
+									className={ `sv-preview-tab ${
+										previewTab === 'video'
+											? 'sv-preview-tab--active'
+											: ''
+									}` }
 								>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"
-									/>
-								</svg>
-								Video
-							</button>
-						</div>
-					) }
-					<div className="sv-preview-stage">
-							{ activeIsGenerating ? (
-								<div className="sv-preview-empty">
-									<div className="sv-spinner w-10 h-10" />
-									<p className="sv-preview-empty-text">
-										Applying screen overlay…
-									</p>
-									<p className="sv-preview-empty-sub">
-										This may take a few seconds
-									</p>
-								</div>
-							) : activeResult && previewTab === 'video' ? (
-								<div className="sv-preview-video-area">
-									{ videoPreviewUrl ? (
-										<video
-											ref={ videoRef }
-											src={ videoPreviewUrl }
-											className="sv-preview-video-player"
-											controls
-											autoPlay
-											playsInline
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										className="w-4 h-4"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										strokeWidth={ 2 }
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"
 										/>
-									) : (
-										<div className="sv-preview-empty">
-											<div className="sv-preview-empty-icon">
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													className="w-8 h-8"
-													fill="none"
-													viewBox="0 0 24 24"
-													stroke="currentColor"
-													strokeWidth={ 1.5 }
-												>
-													<path
-														strokeLinecap="round"
-														strokeLinejoin="round"
-														d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"
-													/>
-												</svg>
-											</div>
-											<p className="sv-preview-empty-text">
-												No video yet
-											</p>
-											<p className="sv-preview-empty-sub">
-												Click Export Video below to
-												record a screen animation
-											</p>
-										</div>
-									) }
-								</div>
-							) : activeResult ? (
-								<>
-									<div className="sv-preview-image-wrap">
-										<img
-											src={ activeResult }
-											className="sv-preview-image"
-											alt={ `${
-												activeView === 'outside'
-													? 'Exterior'
-													: 'Interior'
-											} screen preview` }
-										/>
-									</div>
-									<PanelSliders
-										levels={ activeRetractLevels }
-										onChange={ handleRetractChange }
-										viewType={ activeView }
-									/>
-								</>
-							) : (
-								<div className="sv-preview-empty">
-									<div className="sv-preview-empty-icon">
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											className="w-8 h-8"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-											strokeWidth={ 1.5 }
-										>
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M12.75 6.75h.008v.008h-.008V6.75z"
-											/>
-										</svg>
-									</div>
-									<p className="sv-preview-empty-text">
-										{ activeView === 'outside'
-											? 'Upload an exterior photo and generate a preview'
-											: 'Upload an interior photo and generate a preview' }
-									</p>
-									<p className="sv-preview-empty-sub">
-										Drag the corner pins to match your
-										opening, then click Generate
-									</p>
-								</div>
-							) }
+									</svg>
+									Video
+								</button>
+							</div>
+						) }
+						<div className="sv-preview-stage">
+							{ renderPreviewContent() }
 						</div>
 
 						{ activeResult && (

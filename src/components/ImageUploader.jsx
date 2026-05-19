@@ -50,7 +50,9 @@ const ImageUploader = ( {
 
 	const handleFile = useCallback(
 		( file ) => {
-			if ( ! validateFile( file ) ) return;
+			if ( ! validateFile( file ) ) {
+				return;
+			}
 			onImageUpload( file );
 		},
 		[ onImageUpload, validateFile ]
@@ -73,9 +75,13 @@ const ImageUploader = ( {
 		( e ) => {
 			e.preventDefault();
 			setIsDragging( false );
-			if ( disabled ) return;
+			if ( disabled ) {
+				return;
+			}
 			const files = Array.from( e.dataTransfer.files );
-			if ( files.length > 0 ) handleFile( files[ 0 ] );
+			if ( files.length > 0 ) {
+				handleFile( files[ 0 ] );
+			}
 		},
 		[ disabled, handleFile ]
 	);
@@ -83,7 +89,9 @@ const ImageUploader = ( {
 	const handleDragOver = useCallback(
 		( e ) => {
 			e.preventDefault();
-			if ( ! disabled ) setIsDragging( true );
+			if ( ! disabled ) {
+				setIsDragging( true );
+			}
 		},
 		[ disabled ]
 	);
@@ -96,7 +104,9 @@ const ImageUploader = ( {
 	const handleFileInput = useCallback(
 		( e ) => {
 			const files = e.target.files;
-			if ( files && files.length > 0 ) handleFile( files[ 0 ] );
+			if ( files && files.length > 0 ) {
+				handleFile( files[ 0 ] );
+			}
 		},
 		[ handleFile ]
 	);
@@ -118,7 +128,9 @@ const ImageUploader = ( {
 	const handleRemove = useCallback(
 		( e ) => {
 			e.stopPropagation();
-			if ( onClearImage ) onClearImage();
+			if ( onClearImage ) {
+				onClearImage();
+			}
 		},
 		[ onClearImage ]
 	);
@@ -128,7 +140,9 @@ const ImageUploader = ( {
 			streamRef.current.getTracks().forEach( ( track ) => track.stop() );
 			streamRef.current = null;
 		}
-		if ( videoRef.current ) videoRef.current.srcObject = null;
+		if ( videoRef.current ) {
+			videoRef.current.srcObject = null;
+		}
 	}, [] );
 
 	const closeCameraCapture = useCallback( () => {
@@ -179,7 +193,9 @@ const ImageUploader = ( {
 					await videoRef.current.play();
 				}
 			} catch ( err ) {
-				if ( cancelled ) return;
+				if ( cancelled ) {
+					return;
+				}
 				console.error( 'Camera capture failed:', err );
 				if ( err?.name === 'NotAllowedError' ) {
 					setCameraError( 'Camera permission was denied.' );
@@ -190,7 +206,9 @@ const ImageUploader = ( {
 				}
 				stopCameraStream();
 			} finally {
-				if ( ! cancelled ) setIsCameraLoading( false );
+				if ( ! cancelled ) {
+					setIsCameraLoading( false );
+				}
 			}
 		};
 
@@ -339,13 +357,13 @@ const ImageUploader = ( {
 				</div>
 			) }
 
-		<div className="mt-3 flex gap-2">
-			<button
-				type="button"
-				onClick={ openCameraPicker }
-				className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-lg text-sm font-medium border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed sm:text-xs sm:py-2"
-				disabled={ disabled }
-			>
+			<div className="mt-3 flex gap-2">
+				<button
+					type="button"
+					onClick={ openCameraPicker }
+					className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-lg text-sm font-medium border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed sm:text-xs sm:py-2"
+					disabled={ disabled }
+				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						className="w-3.5 h-3.5"

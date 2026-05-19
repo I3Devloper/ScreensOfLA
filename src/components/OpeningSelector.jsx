@@ -27,7 +27,9 @@ const pointToSegDist = ( px, py, x1, y1, x2, y2 ) => {
 	const dx = x2 - x1,
 		dy = y2 - y1;
 	const lenSq = dx * dx + dy * dy;
-	if ( lenSq === 0 ) return Math.hypot( px - x1, py - y1 );
+	if ( lenSq === 0 ) {
+		return Math.hypot( px - x1, py - y1 );
+	}
 	const t = Math.max(
 		0,
 		Math.min( 1, ( ( px - x1 ) * dx + ( py - y1 ) * dy ) / lenSq )
@@ -39,7 +41,9 @@ const projectToFraction = ( px, py, tl, tr ) => {
 	const dx = tr.x - tl.x,
 		dy = tr.y - tl.y;
 	const lenSq = dx * dx + dy * dy;
-	if ( lenSq === 0 ) return 0.5;
+	if ( lenSq === 0 ) {
+		return 0.5;
+	}
 	return ( ( px - tl.x ) * dx + ( py - tl.y ) * dy ) / lenSq;
 };
 
@@ -69,11 +73,7 @@ const getPointerPos = ( canvas, evt ) => {
 
 const pct = ( val, total ) => ( val / total ) * 100;
 
-const OpeningSelector = ( {
-	imageUrl,
-	onChange,
-	disabled = false,
-} ) => {
+const OpeningSelector = ( { imageUrl, onChange, disabled = false } ) => {
 	const canvasRef = useRef( null );
 	const containerRef = useRef( null );
 	const [ imgSize, setImgSize ] = useState( { width: 0, height: 0 } );
@@ -97,12 +97,16 @@ const OpeningSelector = ( {
 	}, [] );
 
 	useEffect( () => {
-		if ( ! imageUrl ) return;
+		if ( ! imageUrl ) {
+			return;
+		}
 		let cancelled = false;
 		const img = new Image();
 		img.crossOrigin = 'anonymous';
 		img.onload = () => {
-			if ( cancelled ) return;
+			if ( cancelled ) {
+				return;
+			}
 			imageRef.current = img;
 			const maxW = containerRef.current?.clientWidth || 800;
 			const aspect = img.naturalWidth / img.naturalHeight;
@@ -128,14 +132,19 @@ const OpeningSelector = ( {
 	}, [ imageUrl ] );
 
 	useEffect( () => {
-		if ( ! imageRef.current || ! containerRef.current ) return;
+		if ( ! imageRef.current || ! containerRef.current ) {
+			return;
+		}
 		const observer = new ResizeObserver( () => {
 			const maxW = containerRef.current?.clientWidth || 800;
-			const aspect = imageRef.current.naturalWidth / imageRef.current.naturalHeight;
+			const aspect =
+				imageRef.current.naturalWidth / imageRef.current.naturalHeight;
 			const width = Math.min( maxW, imageRef.current.naturalWidth );
 			const height = width / aspect;
 			setImgSize( ( prev ) => {
-				if ( Math.abs( prev.width - width ) < 1 ) return prev;
+				if ( Math.abs( prev.width - width ) < 1 ) {
+					return prev;
+				}
 				return { width, height };
 			} );
 		} );
@@ -145,7 +154,9 @@ const OpeningSelector = ( {
 
 	useEffect( () => {
 		const canvas = canvasRef.current;
-		if ( ! canvas || ! imageRef.current ) return;
+		if ( ! canvas || ! imageRef.current ) {
+			return;
+		}
 
 		const dpr = window.devicePixelRatio || 1;
 		const logicalW = imgSize.width;
@@ -168,7 +179,9 @@ const OpeningSelector = ( {
 		ctx.clearRect( 0, 0, W, H );
 		ctx.drawImage( imageRef.current, 0, 0, W, H );
 
-		if ( pins.length !== 4 ) return;
+		if ( pins.length !== 4 ) {
+			return;
+		}
 
 		const p = pins.map( ( pin ) => ( {
 			x: ( pin.x / 100 ) * W,
@@ -180,8 +193,11 @@ const OpeningSelector = ( {
 		ctx.save();
 		ctx.beginPath();
 		p.forEach( ( pt, i ) => {
-			if ( i === 0 ) ctx.moveTo( pt.x, pt.y );
-			else ctx.lineTo( pt.x, pt.y );
+			if ( i === 0 ) {
+				ctx.moveTo( pt.x, pt.y );
+			} else {
+				ctx.lineTo( pt.x, pt.y );
+			}
 		} );
 		ctx.closePath();
 		ctx.strokeStyle = '#339966';
@@ -331,15 +347,18 @@ const OpeningSelector = ( {
 
 	const handlePointerDown = useCallback(
 		( e ) => {
-			if ( e.touches && e.touches.length > 1 ) return;
+			if ( e.touches && e.touches.length > 1 ) {
+				return;
+			}
 			e.preventDefault();
 			if (
 				disabled ||
 				! canvasRef.current ||
 				imgSize.width === 0 ||
 				pins.length !== 4
-			)
+			) {
 				return;
+			}
 
 			const pos = getPointerPos( canvasRef.current, e );
 			const { width, height } = imgSize;
@@ -424,9 +443,13 @@ const OpeningSelector = ( {
 
 	const handlePointerMove = useCallback(
 		( e ) => {
-			if ( e.touches && e.touches.length > 1 ) return;
+			if ( e.touches && e.touches.length > 1 ) {
+				return;
+			}
 			e.preventDefault();
-			if ( ! dragging || ! canvasRef.current ) return;
+			if ( ! dragging || ! canvasRef.current ) {
+				return;
+			}
 			const pos = getPointerPos( canvasRef.current, e );
 			const { width, height } = imgSize;
 
@@ -580,7 +603,9 @@ const OpeningSelector = ( {
 	);
 
 	const handlePointerUp = useCallback( ( e ) => {
-		if ( e ) e.preventDefault();
+		if ( e ) {
+			e.preventDefault();
+		}
 		setDragging( null );
 	}, [] );
 
@@ -644,14 +669,18 @@ const OpeningSelector = ( {
 	}, [ dividers, beams, pins, emitChange ] );
 
 	const handleRemoveSplit = useCallback( () => {
-		if ( dividers.length === 0 ) return;
+		if ( dividers.length === 0 ) {
+			return;
+		}
 		const newDividers = dividers.slice( 0, -1 );
 		setDividers( newDividers );
 		emitChange( pins, newDividers, beams );
 	}, [ dividers, beams, pins, emitChange ] );
 
 	const handleRemoveBeam = useCallback( () => {
-		if ( beams.length === 0 ) return;
+		if ( beams.length === 0 ) {
+			return;
+		}
 		const newBeams = beams.slice( 0, -1 );
 		setBeams( newBeams );
 		emitChange( pins, dividers, newBeams );

@@ -19,12 +19,16 @@ const easeInOut = ( t ) => ( t < 0.5 ? 2 * t * t : -1 + ( 4 - 2 * t ) * t );
 const computeRetractLevel = ( elapsed ) => {
 	const tElapsed = Math.min( elapsed, TOTAL_DURATION );
 
-	if ( tElapsed < HOLD_TIME ) return 0;
+	if ( tElapsed < HOLD_TIME ) {
+		return 0;
+	}
 	if ( tElapsed < HOLD_TIME + ANIMATE_TIME ) {
 		const t = ( tElapsed - HOLD_TIME ) / ANIMATE_TIME;
 		return easeInOut( t );
 	}
-	if ( tElapsed < HOLD_TIME + ANIMATE_TIME + HOLD_TIME ) return 1;
+	if ( tElapsed < HOLD_TIME + ANIMATE_TIME + HOLD_TIME ) {
+		return 1;
+	}
 	if ( tElapsed < HOLD_TIME + ANIMATE_TIME + HOLD_TIME + ANIMATE_TIME ) {
 		const t =
 			( tElapsed - HOLD_TIME - ANIMATE_TIME - HOLD_TIME ) / ANIMATE_TIME;
@@ -47,10 +51,6 @@ const renderFrame = (
 	ctx.drawImage( baseImg, 0, 0, width, height );
 
 	// Build retractLevels array from single retractLevel for video animation
-	const panelCount = Math.max(
-		1,
-		( params.dividers || [] ).length + ( params.beams || [] ).length * 0 + 1
-	);
 	// Recalculate panel count properly
 	const sortedDivs = [ ...( params.dividers || [] ) ].sort(
 		( a, b ) => a - b
@@ -73,7 +73,9 @@ const renderFrame = (
 			( beam ) =>
 				tLeft >= beam.left - 0.001 && tRight <= beam.right + 0.001
 		);
-		if ( ! isBeamGap ) count++;
+		if ( ! isBeamGap ) {
+			count++;
+		}
 	}
 	const retractLevels = Array( Math.max( 1, count ) ).fill( retractLevel );
 
@@ -133,7 +135,9 @@ export const exportVideo = async ( params ) => {
 	const chunks = [];
 
 	recorder.ondataavailable = ( e ) => {
-		if ( e.data.size > 0 ) chunks.push( e.data );
+		if ( e.data.size > 0 ) {
+			chunks.push( e.data );
+		}
 	};
 
 	const recordingPromise = new Promise( ( resolve ) => {

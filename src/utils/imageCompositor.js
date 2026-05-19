@@ -51,7 +51,7 @@ export const drawWatermark = ( ctx, width, height, logoImg ) => {
  * For refinement workflow, no polygon masking is needed — Gemini already blended correctly.
  *
  * @param {string} aiUrl - URL of the AI-generated image
- * @returns {Promise<string>} - Data URL with watermark
+ * @return {Promise<string>} - Data URL with watermark
  */
 export const addWatermark = async ( aiUrl ) => {
 	const [ aiImg, logoImg ] = await Promise.all( [
@@ -77,9 +77,9 @@ export const addWatermark = async ( aiUrl ) => {
  * The crop is clipped to the user's full-image polygon to prevent rectangular bleed.
  *
  * @param {string} originalUrl - Working original image URL
- * @param {string} aiCropUrl - Gemini-enhanced crop URL
- * @param {Object} cropInfo - Result from cropToSelectedOpening
- * @returns {Promise<string>} - Full-size data URL with AI crop and watermark
+ * @param {string} aiCropUrl   - Gemini-enhanced crop URL
+ * @param {Object} cropInfo    - Result from cropToSelectedOpening
+ * @return {Promise<string>} - Full-size data URL with AI crop and watermark
  */
 export const compositeAiCrop = async ( originalUrl, aiCropUrl, cropInfo ) => {
 	const [ originalImg, aiCropImg, logoImg ] = await Promise.all( [
@@ -114,8 +114,11 @@ export const compositeAiCrop = async ( originalUrl, aiCropUrl, cropInfo ) => {
 	sourceCorners.forEach( ( corner, index ) => {
 		const x = ( corner.x / 100 ) * width;
 		const y = ( corner.y / 100 ) * height;
-		if ( index === 0 ) ctx.moveTo( x, y );
-		else ctx.lineTo( x, y );
+		if ( index === 0 ) {
+			ctx.moveTo( x, y );
+		} else {
+			ctx.lineTo( x, y );
+		}
 	} );
 	ctx.closePath();
 	ctx.clip();
@@ -133,10 +136,10 @@ export const compositeAiCrop = async ( originalUrl, aiCropUrl, cropInfo ) => {
  * Inside the polygon: 70% Gemini realism + 30% overlay geometry guide.
  * This gives photorealistic texture while locking the screen to the exact coordinates.
  *
- * @param {string} aiUrl - Gemini-enhanced image URL
+ * @param {string} aiUrl      - Gemini-enhanced image URL
  * @param {string} overlayUrl - Deterministic screen overlay data URL
- * @param {Array} corners - [{x%, y%, label}, ...]
- * @returns {Promise<string>} - Data URL with blended result + watermark
+ * @param {Array}  corners    - [{x%, y%, label}, ...]
+ * @return {Promise<string>} - Data URL with blended result + watermark
  */
 export const recompositeOverlay = async ( aiUrl, overlayUrl, corners ) => {
 	const [ aiImg, overlayImg, logoImg ] = await Promise.all( [
@@ -162,8 +165,11 @@ export const recompositeOverlay = async ( aiUrl, overlayUrl, corners ) => {
 	corners.forEach( ( corner, index ) => {
 		const x = ( corner.x / 100 ) * width;
 		const y = ( corner.y / 100 ) * height;
-		if ( index === 0 ) ctx.moveTo( x, y );
-		else ctx.lineTo( x, y );
+		if ( index === 0 ) {
+			ctx.moveTo( x, y );
+		} else {
+			ctx.lineTo( x, y );
+		}
 	} );
 	ctx.closePath();
 	ctx.clip();
@@ -184,6 +190,9 @@ export const recompositeOverlay = async ( aiUrl, overlayUrl, corners ) => {
 /**
  * Legacy polygon compositing for backward compatibility.
  * Only use this if the AI returned a patch that needs masking.
+ * @param originalUrl
+ * @param aiUrl
+ * @param corners
  */
 export const compositeScreenImage = async ( originalUrl, aiUrl, corners ) => {
 	if ( ! Array.isArray( corners ) || corners.length !== 4 ) {
@@ -236,12 +245,10 @@ export const compositeScreenImage = async ( originalUrl, aiUrl, corners ) => {
 
 /**
  * CORS-safe wrapper.
+ * @param originalUrl
+ * @param aiUrl
  */
-export const compositeScreenImageSafe = async (
-	originalUrl,
-	aiUrl,
-	corners
-) => {
+export const compositeScreenImageSafe = async ( originalUrl, aiUrl ) => {
 	try {
 		// For refinement workflow: if original and AI are same size-ish, just watermark
 		// Otherwise fall back to legacy compositing

@@ -1,0 +1,21 @@
+{
+	"extends": [ "plugin:@wordpress/eslint-plugin/recommended" ],
+	"env": {
+		"browser": true
+	},
+	"globals": {
+		"Image": "readonly",
+		"navigator": "readonly",
+		"ResizeObserver": "readonly",
+		"alert": "readonly",
+		"HTMLCanvasElement": "readonly"
+	},
+	"rules": {
+		"no-console": "warn",
+		"jsdoc/require-param-type": "off",
+		"jsdoc/check-line-alignment": "off",
+		"jsdoc/check-tag-names": "off",
+		"jsdoc/require-param": "off",
+		"jsdoc/require-returns-description": "off"
+	}
+}
