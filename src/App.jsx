@@ -70,7 +70,7 @@ const calcPanelCount = ( dividers, beams ) => {
 
 const syncRetractLevels = ( currentLevels, panelCount ) => {
 	const levels = [ ...( currentLevels || [] ) ];
-	while ( levels.length < panelCount ) levels.push( 1 );
+	while ( levels.length < panelCount ) levels.push( 0 );
 	if ( levels.length > panelCount ) levels.length = panelCount;
 	return levels;
 };
@@ -101,7 +101,7 @@ function App() {
 				corners: [],
 				dividers: [],
 				beams: [],
-				retractLevels: [ 1 ],
+				retractLevels: [ 0 ],
 				workingUrl: null,
 			} );
 			setActiveView( 'outside' );
@@ -126,7 +126,7 @@ function App() {
 				corners: [],
 				dividers: [],
 				beams: [],
-				retractLevels: [ 1 ],
+				retractLevels: [ 0 ],
 				workingUrl: null,
 			} );
 			setActiveView( 'inside' );
@@ -373,7 +373,7 @@ function App() {
 				</div>
 				<div className="sv-sliders-track">
 					{ levels.map( ( level, idx ) => {
-						const pct = Math.round( level * 100 );
+						const displayPct = Math.round( ( 1 - level ) * 100 );
 						return (
 							<div key={ idx } className="sv-panel-slider">
 								<span className="sv-panel-slider-label">
@@ -384,22 +384,22 @@ function App() {
 										type="range"
 										min="0"
 										max="100"
-										value={ pct }
+										value={ displayPct }
 										aria-label={ `Panel ${
 											idx + 1
-										} screen position: ${ pct }%` }
-										aria-valuetext={ `${ pct }% closed` }
+										} screen position: ${ displayPct }%` }
+										aria-valuetext={ `${ displayPct }% closed` }
 										onChange={ ( e ) => {
+											const sliderVal = Number( e.target.value ) / 100;
 											const newLevels = [ ...levels ];
-											newLevels[ idx ] =
-												Number( e.target.value ) / 100;
+											newLevels[ idx ] = 1 - sliderVal;
 											onChange( viewType, newLevels );
 										} }
 										className="sv-panel-slider-input"
 									/>
 								</div>
 								<span className="sv-panel-slider-value">
-									{ pct }%
+									{ displayPct }%
 								</span>
 							</div>
 						);
