@@ -1,0 +1,30 @@
+name: PR Welcome
+
+on:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Welcome comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ## Welcome, ${{ github.event.pull_request.user.login }}!
+
+            Thanks for opening this pull request. Before we proceed, please review the checklist below:
+
+            - [ ] All tests pass locally (`npm run build` and `npm run lint:js`)
+            - [ ] Documentation has been updated if needed
+            - [ ] Related issues are linked in the description
+
+            > _This comment is managed automatically by the PR Welcome bot._
+            <!-- pr-welcome-bot-comment -->
+          edit-mode: replace

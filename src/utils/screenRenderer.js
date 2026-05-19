@@ -443,15 +443,17 @@ export const renderScreenOverlay = ( {
 			lerp( panelBL, panelTL, r ),
 		];
 
-		drawFabricPanel(
-			ctx,
-			panelPts,
-			color,
-			isInside,
-			visibility,
-			width,
-			height
-		);
+		if ( r < 0.98 ) {
+			drawFabricPanel(
+				ctx,
+				panelPts,
+				color,
+				isInside,
+				visibility,
+				width,
+				height
+			);
+		}
 		panelIdx++;
 	}
 
@@ -464,7 +466,7 @@ export const renderScreenOverlay = ( {
 		Math.round( 24 * scale * sizeMultiplier )
 	);
 	const railThick = Math.max( 6, Math.round( 14 * scale * sizeMultiplier ) );
-	const trackThick = Math.max( 5, Math.round( 10 * scale * sizeMultiplier ) );
+	const trackThick = Math.max( 7, Math.round( 14 * scale * sizeMultiplier ) );
 	const postThick = Math.max( 6, Math.round( 12 * scale * sizeMultiplier ) );
 
 	const extendAsym = ( ax, ay, bx, by, startAmt, endAmt ) => {
@@ -485,7 +487,7 @@ export const renderScreenOverlay = ( {
 		extendAsym( ax, ay, bx, by, amt, amt );
 
 	const drawTrack = ( x1, y1, x2, y2 ) => {
-		const ext = extendAsym( x1, y1, x2, y2, cassetteThick * 0.6, 0 );
+		const ext = extendAsym( x1, y1, x2, y2, cassetteThick * 0.6, trackThick * 0.4 );
 		drawEdgeBar(
 			ctx,
 			ext.x1,
@@ -581,22 +583,27 @@ export const renderScreenOverlay = ( {
 			const retBR = lerp( panelBR, panelTR, r );
 			const retBL = lerp( panelBL, panelTL, r );
 
+			drawCassette( panelTL.x, panelTL.y, panelTR.x, panelTR.y );
 			drawTrack( panelTL.x, panelTL.y, panelBL.x, panelBL.y );
 			drawTrack( panelTR.x, panelTR.y, panelBR.x, panelBR.y );
-			drawCassette( panelTL.x, panelTL.y, panelTR.x, panelTR.y );
-			drawBottomRail( retBL.x, retBL.y, retBR.x, retBR.y );
+			if ( r < 0.98 ) {
+				drawBottomRail( retBL.x, retBL.y, retBR.x, retBR.y );
+			}
 			panelIdx++;
 		}
 	} else {
-		// Single panel mode: simple frame
+		// Single panel mode: side tracks stay fixed, only bottom rail moves
 		const r = getRetractLevel( 0 );
-		drawTrack( pts[ 0 ].x, pts[ 0 ].y, pts[ 3 ].x, pts[ 3 ].y );
-		drawTrack( pts[ 1 ].x, pts[ 1 ].y, pts[ 2 ].x, pts[ 2 ].y );
-		drawCassette( pts[ 0 ].x, pts[ 0 ].y, pts[ 1 ].x, pts[ 1 ].y );
 
 		const newBL = lerp( pts[ 3 ], pts[ 0 ], r );
 		const newBR = lerp( pts[ 2 ], pts[ 1 ], r );
-		drawBottomRail( newBL.x, newBL.y, newBR.x, newBR.y );
+
+		drawCassette( pts[ 0 ].x, pts[ 0 ].y, pts[ 1 ].x, pts[ 1 ].y );
+		drawTrack( pts[ 0 ].x, pts[ 0 ].y, pts[ 3 ].x, pts[ 3 ].y );
+		drawTrack( pts[ 1 ].x, pts[ 1 ].y, pts[ 2 ].x, pts[ 2 ].y );
+		if ( r < 0.98 ) {
+			drawBottomRail( newBL.x, newBL.y, newBR.x, newBR.y );
+		}
 	}
 
 	return canvas;

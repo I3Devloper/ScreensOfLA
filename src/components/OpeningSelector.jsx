@@ -128,6 +128,22 @@ const OpeningSelector = ( {
 	}, [ imageUrl ] );
 
 	useEffect( () => {
+		if ( ! imageRef.current || ! containerRef.current ) return;
+		const observer = new ResizeObserver( () => {
+			const maxW = containerRef.current?.clientWidth || 800;
+			const aspect = imageRef.current.naturalWidth / imageRef.current.naturalHeight;
+			const width = Math.min( maxW, imageRef.current.naturalWidth );
+			const height = width / aspect;
+			setImgSize( ( prev ) => {
+				if ( Math.abs( prev.width - width ) < 1 ) return prev;
+				return { width, height };
+			} );
+		} );
+		observer.observe( containerRef.current );
+		return () => observer.disconnect();
+	}, [ imageUrl ] );
+
+	useEffect( () => {
 		const canvas = canvasRef.current;
 		if ( ! canvas || ! imageRef.current ) return;
 
@@ -669,7 +685,7 @@ const OpeningSelector = ( {
 						className="sv-btn sv-btn-split"
 					>
 						<span className="sv-btn-icon">＋</span>
-						<span className="sv-btn-label">Add Split</span>
+						<span className="sv-btn-label">Split</span>
 					</button>
 					<button
 						type="button"
@@ -678,10 +694,8 @@ const OpeningSelector = ( {
 						className="sv-btn sv-btn-beam"
 					>
 						<span className="sv-btn-icon">＋</span>
-						<span className="sv-btn-label">Add Beam</span>
+						<span className="sv-btn-label">Beam</span>
 					</button>
-				</div>
-				<div className="sv-tool-group">
 					{ dividers.length > 0 && (
 						<button
 							type="button"
@@ -690,7 +704,7 @@ const OpeningSelector = ( {
 							className="sv-btn sv-btn-split sv-btn-remove"
 						>
 							<span className="sv-btn-icon">−</span>
-							<span className="sv-btn-label">Remove Split</span>
+							<span className="sv-btn-label">Split</span>
 						</button>
 					) }
 					{ beams.length > 0 && (
@@ -701,7 +715,7 @@ const OpeningSelector = ( {
 							className="sv-btn sv-btn-beam sv-btn-remove"
 						>
 							<span className="sv-btn-icon">−</span>
-							<span className="sv-btn-label">Remove Beam</span>
+							<span className="sv-btn-label">Beam</span>
 						</button>
 					) }
 				</div>

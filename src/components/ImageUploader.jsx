@@ -339,13 +339,13 @@ const ImageUploader = ( {
 				</div>
 			) }
 
-			<div className="mt-3 flex gap-2">
-				<button
-					type="button"
-					onClick={ openCameraPicker }
-					className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-					disabled={ disabled }
-				>
+		<div className="mt-3 flex gap-2">
+			<button
+				type="button"
+				onClick={ openCameraPicker }
+				className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-lg text-sm font-medium border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed sm:text-xs sm:py-2"
+				disabled={ disabled }
+			>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						className="w-3.5 h-3.5"
@@ -370,7 +370,7 @@ const ImageUploader = ( {
 				<button
 					type="button"
 					onClick={ openUploadPicker }
-					className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-brand-600 text-white transition hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed"
+					className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-lg text-sm font-medium bg-brand-600 text-white transition hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed sm:text-xs sm:py-2"
 					disabled={ disabled }
 				>
 					<svg
@@ -407,22 +407,35 @@ const ImageUploader = ( {
 			/>
 
 			{ isCameraOpen && (
-				<div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">
-					<div className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
-						<div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+				<div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4">
+					<div className="w-full max-h-[95vh] overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl sm:max-w-3xl flex flex-col">
+						<div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
 							<h4 className="text-sm font-semibold text-slate-900">
 								Camera
 							</h4>
 							<button
 								type="button"
 								onClick={ closeCameraCapture }
-								className="text-slate-400 hover:text-slate-700 text-sm transition-colors"
+								className="text-slate-400 hover:text-slate-700 transition-colors p-1"
 							>
-								Close
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									className="w-5 h-5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									strokeWidth={ 2 }
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										d="M6 18L18 6M6 6l12 12"
+									/>
+								</svg>
 							</button>
 						</div>
 
-						<div className="relative bg-black">
+						<div className="relative bg-black flex-1 min-h-0">
 							{ isCameraLoading && ! cameraError && (
 								<div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-white">
 									<div className="sv-spinner w-8 h-8 mb-3 border-white/30 border-t-white" />
@@ -431,7 +444,7 @@ const ImageUploader = ( {
 							) }
 
 							{ cameraError ? (
-								<div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 px-6 py-10 text-center text-white">
+								<div className="flex min-h-[40vh] sm:min-h-[50vh] flex-col items-center justify-center gap-3 px-6 py-10 text-center text-white">
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
 										className="w-10 h-10 text-white/60 mb-1"
@@ -453,7 +466,7 @@ const ImageUploader = ( {
 											closeCameraCapture();
 											openUploadPicker();
 										} }
-										className="mt-1 inline-flex items-center px-4 py-2 rounded-lg text-xs font-medium bg-brand-600 text-white hover:bg-brand-700 transition"
+										className="mt-1 inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-medium bg-brand-600 text-white hover:bg-brand-700 transition sm:text-xs sm:py-2"
 									>
 										Upload Instead
 									</button>
@@ -461,7 +474,7 @@ const ImageUploader = ( {
 							) : (
 								<video
 									ref={ videoRef }
-									className="h-[50vh] w-full object-contain"
+									className="h-[40vh] sm:h-[50vh] w-full object-contain"
 									autoPlay
 									playsInline
 									muted
@@ -469,11 +482,11 @@ const ImageUploader = ( {
 							) }
 						</div>
 
-						<div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-slate-100">
+						<div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-slate-100">
 							<button
 								type="button"
 								onClick={ closeCameraCapture }
-								className="inline-flex items-center px-3 py-2 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition"
+								className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-medium border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition sm:text-xs sm:px-3 sm:py-2"
 							>
 								Cancel
 							</button>
@@ -485,7 +498,7 @@ const ImageUploader = ( {
 									isCameraLoading ||
 									!! cameraError
 								}
-								className="inline-flex items-center px-4 py-2 rounded-lg text-xs font-medium bg-brand-600 text-white hover:bg-brand-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+								className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-medium bg-brand-600 text-white hover:bg-brand-700 transition disabled:opacity-40 disabled:cursor-not-allowed sm:text-xs sm:px-3 sm:py-2"
 							>
 								Capture
 							</button>
