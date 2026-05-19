@@ -1,6 +1,6 @@
 /**
- * Screen Visualizer - Modern Tabbed UI Styles
- * Harmonizes with screensofla.com WordPress / Elementor / Inspaire theme.
+ * Screen Visualizer - Mobile-First Responsive Styles
+ * Base styles target mobile (320px+), media queries scale UP.
  */
 
 @tailwind base;
@@ -10,28 +10,28 @@
 /* ── Base ─────────────────────────────────────────────────────────── */
 
 .screen-visualizer {
-    @apply max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-8;
+    @apply max-w-7xl mx-auto px-3 py-4 md:px-6 md:py-8;
     font-family: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
 }
 
 /* ── Header ───────────────────────────────────────────────────────── */
 
 .sv-header {
-    @apply mb-6;
+    @apply mb-4 md:mb-6;
 }
 
 .sv-header-title {
-    @apply text-2xl md:text-3xl font-bold text-slate-900 tracking-tight;
+    @apply text-xl md:text-3xl font-bold text-slate-900 tracking-tight;
 }
 
 .sv-header-desc {
-    @apply text-slate-500 mt-1 text-sm max-w-xl;
+    @apply text-slate-500 mt-1 text-xs md:text-sm max-w-xl;
 }
 
 /* ── Settings Bar ─────────────────────────────────────────────────── */
 
 .sv-settings-bar {
-    @apply grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm;
+    @apply grid grid-cols-1 gap-3 mb-4 p-3 bg-white rounded-xl border border-slate-200 shadow-sm md:grid-cols-2 md:gap-4 md:mb-6 md:p-4;
 }
 
 .sv-settings-group {
@@ -47,7 +47,7 @@
 }
 
 .sv-swatch {
-    @apply w-8 h-8 rounded-full border-2 transition-all duration-200 shadow-sm cursor-pointer hover:scale-110;
+    @apply w-9 h-9 rounded-full border-2 transition-all duration-200 shadow-sm cursor-pointer hover:scale-110;
 }
 
 .sv-swatch--active {
@@ -55,7 +55,7 @@
 }
 
 .sv-swatch-custom {
-    @apply px-2.5 py-1 text-xs font-semibold rounded-full border-2 transition-all duration-200 border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer;
+    @apply px-3 py-1.5 text-xs font-semibold rounded-full border-2 transition-all duration-200 border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer;
 }
 
 .sv-swatch-custom--active {
@@ -63,11 +63,11 @@
 }
 
 .sv-custom-input {
-    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 mt-1;
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 mt-1;
 }
 
 .sv-select {
-    @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+    @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
 }
 
 /* ── Tabbed Content ───────────────────────────────────────────────── */
@@ -81,15 +81,35 @@
 }
 
 .sv-tab {
-    @apply flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50;
+    @apply flex-1 inline-flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50;
 }
 
 .sv-tab--active {
     @apply bg-slate-900 text-white shadow-sm;
 }
 
+.sv-preview-tab-bar {
+    @apply flex items-center gap-1 p-1 bg-white rounded-xl border border-slate-200 shadow-sm w-full mb-3;
+}
+
+.sv-preview-tab {
+    @apply flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50;
+}
+
+.sv-preview-tab--active {
+    @apply bg-brand-600 text-white shadow-sm;
+}
+
+.sv-preview-video-area {
+    @apply flex-1 flex flex-col bg-black;
+}
+
+.sv-preview-video-player {
+    @apply w-full flex-1 object-contain;
+}
+
 .sv-tab-content {
-    @apply grid grid-cols-1 lg:grid-cols-12 gap-5;
+    @apply grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5;
 }
 
 /* ── Editor Panel ─────────────────────────────────────────────────── */
@@ -103,7 +123,7 @@
 }
 
 .sv-editor-header {
-    @apply flex items-center justify-between px-4 py-3 border-b border-slate-100;
+    @apply flex items-center justify-between px-3 py-3 border-b border-slate-100 md:px-4;
 }
 
 .sv-editor-header-left {
@@ -127,11 +147,11 @@
 }
 
 .sv-editor-body {
-    @apply p-4;
+    @apply p-3 md:p-4;
 }
 
 .sv-generate-btn {
-    @apply w-full mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply w-full mt-3 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed md:mt-4;
 }
 
 .sv-generate-btn--active {
@@ -153,27 +173,53 @@
 }
 
 .sv-preview-image-wrap {
-    @apply flex-1 relative min-w-0 min-h-[280px];
+    @apply flex-1 relative min-w-0 min-h-[200px] md:min-h-[280px];
 }
 
 .sv-preview-image {
     @apply w-full h-full object-contain;
 }
 
-@media (max-width: 640px) {
-    .sv-sliders-track {
-        grid-template-columns: 1fr;
-    }
+.sv-preview-empty {
+    @apply text-center py-10 px-4 flex-1 flex flex-col items-center justify-center md:py-16 md:px-6;
+}
 
-    .sv-panel-sliders {
-        @apply px-3 py-2.5;
-    }
+.sv-preview-empty-icon {
+    @apply w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center mx-auto mb-3 shadow-sm text-slate-300 md:w-14 md:h-14;
+}
+
+.sv-preview-empty-text {
+    @apply text-slate-500 text-xs font-medium md:text-sm;
+}
+
+.sv-preview-empty-sub {
+    @apply text-slate-400 text-xs mt-1;
+}
+
+.sv-preview-actions {
+    @apply mt-3 flex flex-col gap-2 md:mt-4 md:flex-row md:justify-end md:gap-3;
+}
+
+.sv-action-btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed md:py-2.5;
+}
+
+.sv-action-btn--primary {
+    @apply bg-brand-600 text-white hover:bg-brand-700;
+}
+
+.sv-action-btn--secondary {
+    @apply bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 hover:border-slate-300;
+}
+
+.sv-recording-status {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600 border border-slate-200;
 }
 
 /* ── Panel Sliders ────────────────────────────────────────────────── */
 
 .sv-panel-sliders {
-    @apply flex flex-col gap-3 px-4 py-3 bg-white border-t border-slate-200;
+    @apply flex flex-col gap-2 px-3 py-3 bg-white border-t border-slate-200 md:px-4 md:gap-3;
 }
 
 .sv-sliders-header {
@@ -185,7 +231,7 @@
 }
 
 .sv-sliders-legend {
-    @apply flex items-center gap-3 text-[10px] font-medium;
+    @apply flex items-center gap-2 text-[10px] font-medium md:gap-3;
 }
 
 .sv-legend-item {
@@ -202,7 +248,13 @@
 
 .sv-sliders-track {
     @apply grid gap-3;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+    .sv-sliders-track {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
 }
 
 .sv-panel-slider {
@@ -213,28 +265,61 @@
     @apply text-[11px] font-semibold text-slate-600;
 }
 
+.sv-slider-row {
+    @apply flex items-center gap-2;
+}
+
+.sv-slider-btn {
+    @apply flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 text-lg font-bold leading-none cursor-pointer select-none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+    &:hover:not(:disabled) {
+        @apply bg-brand-50 border-brand-400 text-brand-700;
+    }
+
+    &:active:not(:disabled) {
+        @apply bg-brand-100 border-brand-500 text-brand-800;
+    }
+
+    &:disabled {
+        @apply opacity-30 cursor-not-allowed;
+    }
+}
+
+@media (min-width: 640px) {
+    .sv-slider-btn {
+        @apply w-7 h-7 text-base rounded-md;
+    }
+}
+
 .sv-slider-container {
-    @apply relative;
+    @apply relative flex-1;
 }
 
 .sv-panel-slider-input {
-    @apply w-full h-2 cursor-pointer;
+    @apply w-full h-3 cursor-pointer md:h-2;
     -webkit-appearance: none;
     appearance: none;
     background: transparent;
 }
 
 .sv-panel-slider-input::-webkit-slider-runnable-track {
-    @apply h-2 rounded-full bg-gradient-to-r from-slate-200 to-brand-200;
+    @apply h-3 rounded-full bg-gradient-to-r from-slate-200 to-brand-200 md:h-2;
 }
 
 .sv-panel-slider-input::-webkit-slider-thumb {
-    @apply w-5 h-5 rounded-full bg-brand-600 shadow-md border-2 border-white;
+    @apply w-6 h-6 rounded-full bg-brand-600 shadow-md border-2 border-white md:w-5 md:h-5;
     -webkit-appearance: none;
     appearance: none;
     cursor: pointer;
-    margin-top: -6px;
+    margin-top: -8px;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+@media (min-width: 640px) {
+    .sv-panel-slider-input::-webkit-slider-thumb {
+        margin-top: -6px;
+    }
 }
 
 .sv-panel-slider-input::-webkit-slider-thumb:hover {
@@ -243,66 +328,30 @@
 }
 
 .sv-panel-slider-input::-moz-range-track {
-    @apply h-2 rounded-full bg-gradient-to-r from-slate-200 to-brand-200;
+    @apply h-3 rounded-full bg-gradient-to-r from-slate-200 to-brand-200 md:h-2;
 }
 
 .sv-panel-slider-input::-moz-range-thumb {
-    @apply w-5 h-5 rounded-full bg-brand-600 shadow-md border-2 border-white;
+    @apply w-6 h-6 rounded-full bg-brand-600 shadow-md border-2 border-white md:w-5 md:h-5;
     cursor: pointer;
 }
 
 .sv-panel-slider-value {
-    @apply text-[11px] font-bold text-slate-700 tabular-nums self-end;
-}
-
-.sv-preview-empty {
-    @apply text-center py-16 px-6 flex-1 flex flex-col items-center justify-center;
-}
-
-.sv-preview-empty-icon {
-    @apply w-14 h-14 rounded-xl bg-white border border-slate-200 flex items-center justify-center mx-auto mb-3 shadow-sm text-slate-300;
-}
-
-.sv-preview-empty-text {
-    @apply text-slate-500 text-sm font-medium;
-}
-
-.sv-preview-empty-sub {
-    @apply text-slate-400 text-xs mt-1;
-}
-
-.sv-preview-actions {
-    @apply mt-4 flex justify-end gap-3;
-}
-
-.sv-action-btn {
-    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed;
-}
-
-.sv-action-btn--primary {
-    @apply bg-brand-600 text-white hover:bg-brand-700;
-}
-
-.sv-action-btn--secondary {
-    @apply bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 hover:border-slate-300;
-}
-
-.sv-recording-status {
-    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600 border border-slate-200;
+    @apply text-xs font-bold text-slate-700 tabular-nums self-end md:text-[11px];
 }
 
 /* ── Modal ────────────────────────────────────────────────────────── */
 
 .sv-modal-overlay {
-    @apply fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4;
+    @apply fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4;
 }
 
 .sv-modal {
-    @apply w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl;
+    @apply w-full max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl sm:max-w-4xl flex flex-col;
 }
 
 .sv-modal-header {
-    @apply flex items-center justify-between px-5 py-3.5 border-b border-slate-100;
+    @apply flex items-center justify-between px-4 py-3 border-b border-slate-100 sm:px-5 sm:py-3.5;
 }
 
 .sv-modal-title {
@@ -310,23 +359,23 @@
 }
 
 .sv-modal-close {
-    @apply text-slate-400 hover:text-slate-700 text-sm transition-colors;
+    @apply text-slate-400 hover:text-slate-700 text-sm transition-colors px-2 py-1;
 }
 
 .sv-modal-video {
-    @apply bg-black;
+    @apply bg-black flex-1 min-h-0;
 }
 
 .sv-modal-video-player {
-    @apply w-full max-h-[60vh];
+    @apply w-full max-h-[50vh] sm:max-h-[60vh];
 }
 
 .sv-modal-footer {
-    @apply flex items-center justify-end gap-2 px-5 py-3.5 border-t border-slate-100;
+    @apply flex items-center justify-end gap-2 px-4 py-3 border-t border-slate-100 sm:px-5 sm:py-3.5;
 }
 
 .sv-modal-btn {
-    @apply inline-flex items-center px-3 py-2 rounded-lg text-xs font-medium transition;
+    @apply inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition sm:px-3 sm:py-2 sm:text-xs;
 }
 
 .sv-modal-btn--primary {
@@ -340,7 +389,7 @@
 /* ── Drop Zone ────────────────────────────────────────────────────── */
 
 .sv-drop-zone {
-    @apply relative border-2 border-dashed border-slate-300 rounded-xl p-5 text-center transition-all duration-200 bg-slate-50/60 cursor-pointer;
+    @apply relative border-2 border-dashed border-slate-300 rounded-xl p-6 text-center transition-all duration-200 bg-slate-50/60 cursor-pointer;
 }
 
 .sv-drop-zone:hover {
@@ -371,7 +420,7 @@
 }
 
 .sv-remove-btn {
-    @apply absolute top-2 right-2 w-7 h-7 bg-black/50 text-white rounded-full flex items-center justify-center text-sm leading-none z-20 transition-colors duration-150 hover:bg-black/70;
+    @apply absolute top-2 right-2 w-9 h-9 bg-black/50 text-white rounded-full flex items-center justify-center text-base leading-none z-20 transition-colors duration-150 hover:bg-black/70;
 }
 
 /* ── Opening Selector ─────────────────────────────────────────────── */
@@ -381,11 +430,11 @@
 }
 
 .opening-selector-toolbar {
-    @apply flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50/80;
+    @apply flex flex-col gap-2 px-3 py-2.5 border-b border-slate-100 bg-slate-50/80 sm:flex-row sm:flex-wrap sm:items-center;
 }
 
 .opening-selector-hint {
-    @apply text-xs text-slate-500 px-4 py-2 bg-slate-50/60 border-b border-slate-100;
+    @apply text-xs text-slate-500 px-3 py-2 bg-slate-50/60 border-b border-slate-100 sm:px-4;
 }
 
 .opening-selector-hint.sv-hint-secondary {
@@ -408,7 +457,7 @@
 }
 
 .sv-btn {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed min-h-[36px];
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold border transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px] sm:min-h-[36px] sm:py-1.5;
 }
 
 .sv-btn-icon {
@@ -416,7 +465,7 @@
 }
 
 .sv-btn-label {
-    @apply hidden sm:inline;
+    @apply inline;
 }
 
 .sv-btn-split {
@@ -436,66 +485,7 @@
 }
 
 .sv-btn-reset {
-    @apply border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 ml-auto;
-}
-
-/* ── Opening Selector ─────────────────────────────────────────────── */
-
-.opening-selector {
-    @apply bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden;
-}
-
-.opening-selector-toolbar {
-    @apply flex flex-wrap items-center gap-2 px-3 py-2.5 border-b border-slate-100 bg-slate-50/80;
-}
-
-.opening-selector-hint {
-    @apply text-xs text-slate-500 px-4 py-2 bg-slate-50/60 border-b border-slate-100;
-}
-
-.opening-selector-hint.sv-hint-secondary {
-    @apply text-slate-400;
-}
-
-.opening-selector-canvas-wrap {
-    @apply relative bg-slate-100 overflow-hidden;
-}
-
-.opening-selector-canvas {
-    @apply block w-full;
-    touch-action: none;
-}
-
-.sv-btn {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed;
-}
-
-.sv-btn-icon {
-    @apply text-sm leading-none;
-}
-
-.sv-btn-label {
-    @apply hidden sm:inline;
-}
-
-.sv-btn-split {
-    @apply border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:border-amber-400;
-}
-
-.sv-btn-split.sv-btn-remove {
-    @apply border-amber-200 bg-white text-amber-600 hover:bg-amber-50 hover:border-amber-300;
-}
-
-.sv-btn-beam {
-    @apply border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-400;
-}
-
-.sv-btn-beam.sv-btn-remove {
-    @apply border-red-200 bg-white text-red-600 hover:bg-red-50 hover:border-red-300;
-}
-
-.sv-btn-reset {
-    @apply border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 ml-auto;
+    @apply border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300;
 }
 
 /* ── Spinner ──────────────────────────────────────────────────────── */
@@ -509,15 +499,15 @@
     animation: sv-spin 0.8s linear infinite;
 }
 
-/* ── Range Slider ─────────────────────────────────────────────────── */
+/* ── Range Slider (generic) ───────────────────────────────────────── */
 
 input[type="range"] {
-    @apply w-full h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer;
+    @apply w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer;
     -webkit-appearance: none;
 }
 
 input[type="range"]::-webkit-slider-thumb {
-    @apply w-4 h-4 bg-brand-600 rounded-full shadow-sm;
+    @apply w-5 h-5 bg-brand-600 rounded-full shadow-sm;
     -webkit-appearance: none;
     appearance: none;
     cursor: pointer;
@@ -530,7 +520,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 input[type="range"]::-moz-range-thumb {
-    @apply w-4 h-4 bg-brand-600 rounded-full shadow-sm border-0;
+    @apply w-5 h-5 bg-brand-600 rounded-full shadow-sm border-0;
     cursor: pointer;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -553,131 +543,15 @@ input[type="range"]::-moz-range-thumb:hover {
     animation: sv-shimmer 1.5s infinite;
 }
 
-/* ── Responsive ───────────────────────────────────────────────────── */
-
-@media (pointer: coarse) {
-    .sv-remove-btn {
-        @apply w-9 h-9 text-base;
-    }
-
-    .sv-btn {
-        min-height: 44px;
-    }
-
-    .sv-tab {
-        @apply py-3;
-    }
-
-    .sv-tool-group {
-        @apply gap-1;
-    }
-
-    .opening-selector-toolbar {
-        @apply px-2 py-2 gap-1.5;
-    }
-
-    .sv-preview-actions {
-        @apply flex-col;
-    }
-
-    .sv-action-btn {
-        @apply w-full justify-center;
-    }
-}
-
-@media (max-width: 640px) {
-    .screen-visualizer {
-        @apply px-3 py-4;
-    }
-
-    .sv-header {
-        @apply mb-4;
-    }
-
-    .sv-header-title {
-        @apply text-xl;
-    }
-
-    .sv-header-desc {
-        @apply text-xs;
-    }
-
-    .sv-settings-bar {
-        @apply p-3 gap-3 mb-4;
-    }
-
-    .sv-tab-content {
-        @apply gap-4;
-    }
-
-    .sv-editor-col {
-        @apply lg:col-span-12;
-    }
-
-    .sv-preview-col {
-        @apply lg:col-span-12;
-    }
-
-    .sv-preview-stage {
-        @apply min-h-[240px];
-    }
-
-    .sv-preview-image-wrap {
-        @apply min-h-[200px];
-    }
-
-    .sv-sliders-track {
-        grid-template-columns: 1fr;
-    }
-
-    .sv-panel-sliders {
-        @apply px-3 py-2.5;
-    }
-
-    .sv-preview-actions {
-        @apply flex-col;
-    }
-
-    .sv-action-btn {
-        @apply w-full justify-center;
-    }
-
-    .sv-editor-body {
-        @apply p-3;
-    }
-
-    .sv-generate-btn {
-        @apply mt-3 py-2.5;
-    }
-
-    .opening-selector-toolbar {
-        @apply flex-col items-stretch gap-2;
-    }
-
-    .sv-tool-group {
-        @apply flex-wrap justify-center;
-    }
-
-    .sv-btn-reset {
-        @apply ml-0;
-    }
-
-    .sv-modal {
-        @apply max-w-full mx-2;
-    }
-}
+/* ── Very small screens (≤374px) ──────────────────────────────────── */
 
 @media (max-width: 374px) {
     .sv-tab {
-        @apply text-xs px-3 py-2.5;
+        @apply text-xs px-2.5 py-2.5;
     }
 
     .sv-tab svg {
         @apply w-3.5 h-3.5;
-    }
-
-    .sv-settings-bar {
-        @apply grid-cols-1;
     }
 
     .opening-selector-canvas-wrap {

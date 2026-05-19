@@ -1,42 +1,49 @@
 name: CI
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: screen-visualizer
+    build:
+        runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [ 18.x, 20.x ]
+        strategy:
+            matrix:
+                node-version: [18.x, 20.x]
 
-    steps:
-      - uses: actions/checkout@v4
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-          cache-dependency-path: screen-visualizer/package-lock.json
+            - name: Use Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+            - name: Install dependencies
+              run: npm ci
 
-      - name: Lint
-        run: npm run lint:js
+            - name: Lint JS
+              run: npm run lint:js
 
-      - name: Build
-        run: npm run build
+            - name: Lint CSS
+              run: npm run lint:css
 
-      - name: Verify build output
-        run: |
-          test -f assets/build/index.js || { echo "Build output missing"; exit 1; }
-          test -f assets/build/index.asset.php || { echo "Asset manifest missing"; exit 1; }
+            - name: Build
+              run: npm run build
+
+            - name: Verify build output
+              run: |
+                  test -f assets/build/index.js || { echo "Build output missing"; exit 1; }
+                  test -f assets/build/index.asset.php || { echo "Asset manifest missing"; exit 1; }
+                  test -f assets/build/index.css || { echo "CSS output missing"; exit 1; }
+
+            - name: Security audit
+              run: npm audit --audit-level=high || true

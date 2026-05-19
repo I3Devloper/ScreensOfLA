@@ -1,0 +1,30 @@
+name: PR Welcome
+
+on:
+    pull_request:
+        types: [opened, reopened]
+
+permissions:
+    pull-requests: write
+
+jobs:
+    welcome:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Welcome comment
+              uses: peter-evans/create-or-update-comment@v4
+              with:
+                  issue-number: ${{ github.event.pull_request.number }}
+                  body: |
+                      ## Welcome, ${{ github.event.pull_request.user.login }}!
+
+                      Thanks for opening this pull request. The CI pipeline will automatically check:
+
+                      - JavaScript linting (`npm run lint:js`)
+                      - CSS linting (`npm run lint:css`)
+                      - Build output verification
+                      - Security audit (`npm audit`)
+
+                      > _This comment is managed automatically._
+                      <!-- pr-welcome-bot-comment -->
+                  edit-mode: replace
