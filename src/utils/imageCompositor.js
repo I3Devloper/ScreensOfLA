@@ -252,6 +252,7 @@ export const compositeScreenImage = async ( originalUrl, aiUrl, corners ) => {
 export const compositeScreenImageSafe = async (
 	originalUrl,
 	aiUrl,
+	// eslint-disable-next-line no-unused-vars
 	corners
 ) => {
 	try {
