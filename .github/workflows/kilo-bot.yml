@@ -30,7 +30,7 @@ jobs:
                   echo "Issue/PR: ${{ github.event.issue.number || github.event.pull_request.number }}"
                   echo "Repository: ${{ github.repository }}"
 
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
               if: github.event_name == 'pull_request'
 
             - name: Setup Node.js
