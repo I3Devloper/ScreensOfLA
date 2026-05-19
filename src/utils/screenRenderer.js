@@ -33,10 +33,7 @@ const lighten = ( hex, amount ) => {
 
 const darken = ( hex, amount ) => lighten( hex, -amount );
 
-/**
- * Resolves a color name or value to a hex string.
- * @param colorName
- */
+/** Resolves a color name or value to a hex string. */
 const normalizeColor = ( colorName ) => {
 	const map = {
 		'dark bronze': '#5C4033',
@@ -100,18 +97,9 @@ const lerp = ( p1, p2, t ) => ( {
 	y: p1.y + ( p2.y - p1.y ) * t,
 } );
 
-// ─── Frame bar rendering (edge-following) ───────────────────────────
+// ─── Frame bar rendering ────────────────────────────────────────────
 
-/**
- * Draws a 3D metallic bar along a line segment.
- * @param ctx
- * @param x1
- * @param y1
- * @param x2
- * @param y2
- * @param thickness
- * @param baseColor
- */
+/** Draws a 3D metallic bar along a line segment. */
 const drawEdgeBar = ( ctx, x1, y1, x2, y2, thickness, baseColor ) => {
 	ctx.save();
 	const dx = x2 - x1,
@@ -177,12 +165,7 @@ const drawEdgeBar = ( ctx, x1, y1, x2, y2, thickness, baseColor ) => {
 	ctx.restore();
 };
 
-/**
- * Creates a seamless woven cloth pattern canvas
- * @param hexColor
- * @param isInside
- * @param panelScale
- */
+/** Creates a seamless woven cloth pattern canvas. */
 const createClothPattern = ( hexColor, isInside, panelScale ) => {
 	const pCanvas = document.createElement( 'canvas' );
 
@@ -224,16 +207,7 @@ const createClothPattern = ( hexColor, isInside, panelScale ) => {
 	return pCanvas;
 };
 
-/**
- * Draws a fabric fill (clipped to a 4-point polygon).
- * @param ctx
- * @param panelPts
- * @param color
- * @param isInside
- * @param visibility
- * @param width
- * @param height
- */
+/** Draws a fabric fill clipped to a 4-point polygon. */
 const drawFabricPanel = (
 	ctx,
 	panelPts,
@@ -305,16 +279,7 @@ const drawFabricPanel = (
 	ctx.restore();
 };
 
-/**
- * Draws a 3D structural pillar at a divider position.
- * @param ctx
- * @param x1
- * @param y1
- * @param x2
- * @param y2
- * @param thickness
- * @param baseColor
- */
+/** Draws a 3D structural pillar at a divider position. */
 const drawPillar = ( ctx, x1, y1, x2, y2, thickness, baseColor ) => {
 	ctx.save();
 	const dx = x2 - x1,
@@ -379,22 +344,7 @@ const drawPillar = ( ctx, x1, y1, x2, y2, thickness, baseColor ) => {
 
 // ─── Main export ────────────────────────────────────────────────────
 
-/**
- * Renders a screen overlay with support for multi-panel splits and beams.
- *
- * @param {Object} params
- * @param {number} params.width              - canvas width
- * @param {number} params.height             - canvas height
- * @param {Array}  params.corners            - [{x%, y%, label}, ...] TL, TR, BR, BL
- * @param {Array}  params.dividers           - [0.33, 0.66, ...] fractions for vertical splits
- * @param {Array}  params.beams              - [{left, right}, ...] structural gaps
- * @param {string} params.viewType           - 'inside' | 'outside'
- * @param {string} params.screenColor        - e.g. 'dark bronze'
- * @param {number} params.interiorVisibility - 90 or 95
- * @param          params.retractLevels
- * @param          params.targetCanvas
- * @return {HTMLCanvasElement}
- */
+/** Renders a screen overlay with multi-panel splits and beams. */
 export const renderScreenOverlay = ( {
 	width,
 	height,
