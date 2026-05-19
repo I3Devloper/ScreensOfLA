@@ -696,6 +696,8 @@ const OpeningSelector = ( {
 						<span className="sv-btn-icon">＋</span>
 						<span className="sv-btn-label">Beam</span>
 					</button>
+				</div>
+				<div className="sv-tool-group">
 					{ dividers.length > 0 && (
 						<button
 							type="button"

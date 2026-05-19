@@ -13,9 +13,6 @@ on:
 jobs:
   triage:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: screen-visualizer
     if: |
       contains(github.event.issue.body, '@kilocode-bot') ||
       contains(github.event.pull_request.body, '@kilocode-bot') ||
