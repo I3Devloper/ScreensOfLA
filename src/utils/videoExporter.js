@@ -1,7 +1,7 @@
 /**
  * Video Exporter
  * Records a 60fps WebM video of the screen retracting/extending.
- * Returns a blob URL for in-browser preview playblack.
+ * Returns a blob URL for in-browser preview playback.
  */
 import { renderScreenOverlay } from './screenRenderer';
 import { loadImage, getLogo, drawWatermark } from './imageCompositor';
@@ -11,30 +11,55 @@ const FRAME_INTERVAL = 1000 / FPS;
 const HOLD_TIME = 0.5;
 const ANIMATE_TIME = 2.0;
 const TOTAL_DURATION =
-	HOLD_TIME + ANIMATE_TIME + HOLD_TIME + ANIMATE_TIME + HOLD_TIME; // 5.5s
+	HOLD_TIME + ANIMATE_TIME + HOLD_TIME + ANIMATE_TIME + HOLD_TIME;
 const TOTAL_FRAMES = Math.ceil( TOTAL_DURATION * FPS );
 
 const easeInOut = ( t ) => ( t < 0.5 ? 2 * t * t : -1 + ( 4 - 2 * t ) * t );
 
 const computeRetractLevel = ( elapsed ) => {
-	const tElapsed = Math.min( elapsed, TOTAL_DURATION );
+	const t = Math.min( elapsed, TOTAL_DURATION );
 
-	if ( tElapsed < HOLD_TIME ) {
+	if ( t < HOLD_TIME ) {
 		return 0;
 	}
-	if ( tElapsed < HOLD_TIME + ANIMATE_TIME ) {
-		const t = ( tElapsed - HOLD_TIME ) / ANIMATE_TIME;
-		return easeInOut( t );
+	if ( t < HOLD_TIME + ANIMATE_TIME ) {
+		return easeInOut( ( t - HOLD_TIME ) / ANIMATE_TIME );
 	}
-	if ( tElapsed < HOLD_TIME + ANIMATE_TIME + HOLD_TIME ) {
+	if ( t < HOLD_TIME + ANIMATE_TIME + HOLD_TIME ) {
 		return 1;
 	}
-	if ( tElapsed < HOLD_TIME + ANIMATE_TIME + HOLD_TIME + ANIMATE_TIME ) {
-		const t =
-			( tElapsed - HOLD_TIME - ANIMATE_TIME - HOLD_TIME ) / ANIMATE_TIME;
-		return 1 - easeInOut( t );
+	if ( t < HOLD_TIME + ANIMATE_TIME + HOLD_TIME + ANIMATE_TIME ) {
+		return (
+			1 - easeInOut( ( t - 2 * HOLD_TIME - ANIMATE_TIME ) / ANIMATE_TIME )
+		);
 	}
 	return 0;
+};
+
+const countPanels = ( dividers, beams ) => {
+	const sortedDivs = [ ...( dividers || [] ) ].sort( ( a, b ) => a - b );
+	const sortedBeams = [ ...( beams || [] ) ].sort(
+		( a, b ) => a.left - b.left
+	);
+	const boundaries = [ 0, ...sortedDivs ];
+	sortedBeams.forEach( ( beam ) => {
+		boundaries.push( beam.left, beam.right );
+	} );
+	boundaries.push( 1 );
+	boundaries.sort( ( a, b ) => a - b );
+
+	let count = 0;
+	for ( let i = 0; i < boundaries.length - 1; i++ ) {
+		const isGap = sortedBeams.some(
+			( beam ) =>
+				boundaries[ i ] >= beam.left - 0.001 &&
+				boundaries[ i + 1 ] <= beam.right + 0.001
+		);
+		if ( ! isGap ) {
+			count++;
+		}
+	}
+	return Math.max( 1, count );
 };
 
 const renderFrame = (
@@ -50,34 +75,8 @@ const renderFrame = (
 	ctx.clearRect( 0, 0, width, height );
 	ctx.drawImage( baseImg, 0, 0, width, height );
 
-	// Build retractLevels array from single retractLevel for video animation
-	// Recalculate panel count properly
-	const sortedDivs = [ ...( params.dividers || [] ) ].sort(
-		( a, b ) => a - b
-	);
-	const sortedBeams = [ ...( params.beams || [] ) ].sort(
-		( a, b ) => a.left - b.left
-	);
-	const allBoundaries = [ 0, ...sortedDivs ];
-	sortedBeams.forEach( ( beam ) => {
-		allBoundaries.push( beam.left );
-		allBoundaries.push( beam.right );
-	} );
-	allBoundaries.push( 1 );
-	allBoundaries.sort( ( a, b ) => a - b );
-	let count = 0;
-	for ( let i = 0; i < allBoundaries.length - 1; i++ ) {
-		const tLeft = allBoundaries[ i ];
-		const tRight = allBoundaries[ i + 1 ];
-		const isBeamGap = sortedBeams.some(
-			( beam ) =>
-				tLeft >= beam.left - 0.001 && tRight <= beam.right + 0.001
-		);
-		if ( ! isBeamGap ) {
-			count++;
-		}
-	}
-	const retractLevels = Array( Math.max( 1, count ) ).fill( retractLevel );
+	const panelCount = countPanels( params.dividers, params.beams );
+	const retractLevels = Array( panelCount ).fill( retractLevel );
 
 	renderScreenOverlay( {
 		width,
@@ -106,7 +105,6 @@ export const exportVideo = async ( params ) => {
 		throw new Error( 'Video export is not supported in this browser.' );
 	}
 
-	// 1. Preload assets
 	const [ baseImg, logoImg ] = await Promise.all( [
 		loadImage( workingUrl ),
 		getLogo(),
@@ -115,16 +113,13 @@ export const exportVideo = async ( params ) => {
 	const width = baseImg.naturalWidth;
 	const height = baseImg.naturalHeight;
 
-	// 2. Recording canvas
 	const recordCanvas = document.createElement( 'canvas' );
 	recordCanvas.width = width;
 	recordCanvas.height = height;
 	const ctx = recordCanvas.getContext( '2d' );
 
-	// 3. Reusable overlay canvas
 	const overlayCanvas = document.createElement( 'canvas' );
 
-	// 4. MediaRecorder setup
 	const stream = recordCanvas.captureStream( FPS );
 	const mimeType = window.MediaRecorder.isTypeSupported(
 		'video/webm;codecs=vp9'
@@ -147,7 +142,6 @@ export const exportVideo = async ( params ) => {
 		};
 	} );
 
-	// 5. Render initial frame before starting recorder
 	renderFrame(
 		ctx,
 		width,
@@ -159,14 +153,12 @@ export const exportVideo = async ( params ) => {
 		0
 	);
 
-	// 6. Start recording and run animation loop
 	recorder.start();
 
 	let frame = 0;
 	const interval = setInterval( () => {
 		if ( frame >= TOTAL_FRAMES ) {
 			clearInterval( interval );
-			// Render final extended frame
 			renderFrame(
 				ctx,
 				width,
@@ -177,10 +169,7 @@ export const exportVideo = async ( params ) => {
 				params,
 				0
 			);
-			// Let the frame settle before stopping
-			setTimeout( () => {
-				recorder.stop();
-			}, FRAME_INTERVAL );
+			setTimeout( () => recorder.stop(), FRAME_INTERVAL );
 			return;
 		}
 
@@ -198,12 +187,10 @@ export const exportVideo = async ( params ) => {
 		);
 
 		frame++;
-
 		if ( onProgress ) {
 			onProgress( frame / TOTAL_FRAMES );
 		}
 	}, FRAME_INTERVAL );
 
-	// 7. Wait for recording to finish
 	return recordingPromise;
 };

@@ -491,7 +491,9 @@
 /* ── Spinner ──────────────────────────────────────────────────────── */
 
 @keyframes sv-spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .sv-spinner {
@@ -501,12 +503,12 @@
 
 /* ── Range Slider (generic) ───────────────────────────────────────── */
 
-input[type="range"] {
+input[type='range'] {
     @apply w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer;
     -webkit-appearance: none;
 }
 
-input[type="range"]::-webkit-slider-thumb {
+input[type='range']::-webkit-slider-thumb {
     @apply w-5 h-5 bg-brand-600 rounded-full shadow-sm;
     -webkit-appearance: none;
     appearance: none;
@@ -514,18 +516,18 @@ input[type="range"]::-webkit-slider-thumb {
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-input[type="range"]::-webkit-slider-thumb:hover {
+input[type='range']::-webkit-slider-thumb:hover {
     transform: scale(1.15);
     box-shadow: 0 0 0 4px rgba(51, 153, 102, 0.15);
 }
 
-input[type="range"]::-moz-range-thumb {
+input[type='range']::-moz-range-thumb {
     @apply w-5 h-5 bg-brand-600 rounded-full shadow-sm border-0;
     cursor: pointer;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-input[type="range"]::-moz-range-thumb:hover {
+input[type='range']::-moz-range-thumb:hover {
     transform: scale(1.15);
     box-shadow: 0 0 0 4px rgba(51, 153, 102, 0.15);
 }
@@ -533,8 +535,12 @@ input[type="range"]::-moz-range-thumb:hover {
 /* ── Skeleton Loader ──────────────────────────────────────────────── */
 
 @keyframes sv-shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
 }
 
 .sv-skeleton {
