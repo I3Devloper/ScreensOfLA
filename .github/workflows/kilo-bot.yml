@@ -13,6 +13,9 @@ on:
 jobs:
   triage:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: screen-visualizer
     if: |
       contains(github.event.issue.body, '@kilocode-bot') ||
       contains(github.event.pull_request.body, '@kilocode-bot') ||
@@ -34,6 +37,7 @@ jobs:
         with:
           node-version: '20.x'
           cache: 'npm'
+          cache-dependency-path: screen-visualizer/package-lock.json
 
       - name: Install and build
         if: github.event_name == 'pull_request'
