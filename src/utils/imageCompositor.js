@@ -244,14 +244,17 @@ export const compositeScreenImage = async ( originalUrl, aiUrl, corners ) => {
 };
 
 /**
- * CORS-safe wrapper.
- * @param originalUrl
- * @param aiUrl
+ * CORS-safe wrapper for screen compositing.
+ * @param {string} originalUrl - Original image URL
+ * @param {string} aiUrl - AI-processed image URL
+ * @param {Array} corners - Opening corner coordinates (reserved for future use)
  */
-export const compositeScreenImageSafe = async ( originalUrl, aiUrl ) => {
+export const compositeScreenImageSafe = async (
+	originalUrl,
+	aiUrl,
+	corners
+) => {
 	try {
-		// For refinement workflow: if original and AI are same size-ish, just watermark
-		// Otherwise fall back to legacy compositing
 		const dataUrl = await addWatermark( aiUrl );
 		return dataUrl;
 	} catch ( error ) {
