@@ -1,0 +1,566 @@
+/**
+ * Screen Visualizer - Mobile-First Responsive Styles
+ * Base styles target mobile (320px+), media queries scale UP.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+
+.screen-visualizer {
+    @apply max-w-7xl mx-auto px-3 py-4 md:px-6 md:py-8;
+    font-family: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Header ───────────────────────────────────────────────────────── */
+
+.sv-header {
+    @apply mb-4 md:mb-6;
+}
+
+.sv-header-title {
+    @apply text-xl md:text-3xl font-bold text-slate-900 tracking-tight;
+}
+
+.sv-header-desc {
+    @apply text-slate-500 mt-1 text-xs md:text-sm max-w-xl;
+}
+
+/* ── Settings Bar ─────────────────────────────────────────────────── */
+
+.sv-settings-bar {
+    @apply grid grid-cols-1 gap-3 mb-4 p-3 bg-white rounded-xl border border-slate-200 shadow-sm md:grid-cols-2 md:gap-4 md:mb-6 md:p-4;
+}
+
+.sv-settings-group {
+    @apply flex flex-col gap-2;
+}
+
+.sv-settings-label {
+    @apply text-xs font-semibold text-slate-700 uppercase tracking-wide;
+}
+
+.sv-color-swatches {
+    @apply flex flex-wrap items-center gap-2;
+}
+
+.sv-swatch {
+    @apply w-9 h-9 rounded-full border-2 transition-all duration-200 shadow-sm cursor-pointer hover:scale-110;
+}
+
+.sv-swatch--active {
+    @apply border-brand-500 scale-110 ring-2 ring-brand-200;
+}
+
+.sv-swatch-custom {
+    @apply px-3 py-1.5 text-xs font-semibold rounded-full border-2 transition-all duration-200 border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer;
+}
+
+.sv-swatch-custom--active {
+    @apply border-brand-500 text-brand-700 bg-brand-50 ring-2 ring-brand-200;
+}
+
+.sv-custom-input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 mt-1;
+}
+
+.sv-select {
+    @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+}
+
+/* ── Tabbed Content ───────────────────────────────────────────────── */
+
+.sv-tabbed-content {
+    @apply flex flex-col gap-4;
+}
+
+.sv-tab-bar {
+    @apply flex items-center gap-1 p-1 bg-white rounded-xl border border-slate-200 shadow-sm w-full;
+}
+
+.sv-tab {
+    @apply flex-1 inline-flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50;
+}
+
+.sv-tab--active {
+    @apply bg-slate-900 text-white shadow-sm;
+}
+
+.sv-preview-tab-bar {
+    @apply flex items-center gap-1 p-1 bg-white rounded-xl border border-slate-200 shadow-sm w-full mb-3;
+}
+
+.sv-preview-tab {
+    @apply flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50;
+}
+
+.sv-preview-tab--active {
+    @apply bg-brand-600 text-white shadow-sm;
+}
+
+.sv-preview-video-area {
+    @apply flex-1 flex flex-col bg-black;
+}
+
+.sv-preview-video-player {
+    @apply w-full flex-1 object-contain;
+}
+
+.sv-tab-content {
+    @apply grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5;
+}
+
+/* ── Editor Panel ─────────────────────────────────────────────────── */
+
+.sv-editor-col {
+    @apply lg:col-span-5;
+}
+
+.sv-editor-panel {
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden;
+}
+
+.sv-editor-header {
+    @apply flex items-center justify-between px-3 py-3 border-b border-slate-100 md:px-4;
+}
+
+.sv-editor-header-left {
+    @apply flex items-center gap-2.5;
+}
+
+.sv-editor-icon {
+    @apply w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center text-brand-600;
+}
+
+.sv-editor-title {
+    @apply text-sm font-bold text-slate-900;
+}
+
+.sv-editor-subtitle {
+    @apply text-xs text-slate-400;
+}
+
+.sv-ready-badge {
+    @apply inline-flex items-center gap-1 text-xs font-semibold text-brand-700 bg-brand-50 px-2.5 py-1 rounded-full border border-brand-100;
+}
+
+.sv-editor-body {
+    @apply p-3 md:p-4;
+}
+
+.sv-generate-btn {
+    @apply w-full mt-3 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed md:mt-4;
+}
+
+.sv-generate-btn--active {
+    @apply shadow-lg hover:shadow-xl ring-2 ring-brand-300/50;
+}
+
+.sv-error-msg {
+    @apply mt-3 flex items-start gap-2 text-red-700 text-xs bg-red-50 px-3 py-2.5 rounded-lg border border-red-100;
+}
+
+/* ── Preview Panel ────────────────────────────────────────────────── */
+
+.sv-preview-col {
+    @apply lg:col-span-7;
+}
+
+.sv-preview-stage {
+    @apply bg-slate-100 rounded-xl border border-slate-200 flex flex-col shadow-inner overflow-hidden;
+}
+
+.sv-preview-image-wrap {
+    @apply flex-1 relative min-w-0 min-h-[200px] md:min-h-[280px];
+}
+
+.sv-preview-image {
+    @apply w-full h-full object-contain;
+}
+
+.sv-preview-empty {
+    @apply text-center py-10 px-4 flex-1 flex flex-col items-center justify-center md:py-16 md:px-6;
+}
+
+.sv-preview-empty-icon {
+    @apply w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center mx-auto mb-3 shadow-sm text-slate-300 md:w-14 md:h-14;
+}
+
+.sv-preview-empty-text {
+    @apply text-slate-500 text-xs font-medium md:text-sm;
+}
+
+.sv-preview-empty-sub {
+    @apply text-slate-400 text-xs mt-1;
+}
+
+.sv-preview-actions {
+    @apply mt-3 flex flex-col gap-2 md:mt-4 md:flex-row md:justify-end md:gap-3;
+}
+
+.sv-action-btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed md:py-2.5;
+}
+
+.sv-action-btn--primary {
+    @apply bg-brand-600 text-white hover:bg-brand-700;
+}
+
+.sv-action-btn--secondary {
+    @apply bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 hover:border-slate-300;
+}
+
+.sv-recording-status {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600 border border-slate-200;
+}
+
+/* ── Panel Sliders ────────────────────────────────────────────────── */
+
+.sv-panel-sliders {
+    @apply flex flex-col gap-2 px-3 py-3 bg-white border-t border-slate-200 md:px-4 md:gap-3;
+}
+
+.sv-sliders-header {
+    @apply flex items-center justify-between;
+}
+
+.sv-sliders-title {
+    @apply text-xs font-semibold text-slate-700;
+}
+
+.sv-sliders-legend {
+    @apply flex items-center gap-2 text-[10px] font-medium md:gap-3;
+}
+
+.sv-legend-item {
+    @apply flex items-center gap-1;
+}
+
+.sv-legend-open {
+    @apply text-slate-500;
+}
+
+.sv-legend-closed {
+    @apply text-brand-700;
+}
+
+.sv-sliders-track {
+    @apply grid gap-3;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+    .sv-sliders-track {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+}
+
+.sv-panel-slider {
+    @apply flex flex-col gap-1.5;
+}
+
+.sv-panel-slider-label {
+    @apply text-[11px] font-semibold text-slate-600;
+}
+
+.sv-slider-row {
+    @apply flex items-center gap-2;
+}
+
+.sv-slider-btn {
+    @apply flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 text-lg font-bold leading-none cursor-pointer select-none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+    &:hover:not(:disabled) {
+        @apply bg-brand-50 border-brand-400 text-brand-700;
+    }
+
+    &:active:not(:disabled) {
+        @apply bg-brand-100 border-brand-500 text-brand-800;
+    }
+
+    &:disabled {
+        @apply opacity-30 cursor-not-allowed;
+    }
+}
+
+@media (min-width: 640px) {
+    .sv-slider-btn {
+        @apply w-7 h-7 text-base rounded-md;
+    }
+}
+
+.sv-slider-container {
+    @apply relative flex-1;
+}
+
+.sv-panel-slider-input {
+    @apply w-full h-3 cursor-pointer md:h-2;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+}
+
+.sv-panel-slider-input::-webkit-slider-runnable-track {
+    @apply h-3 rounded-full bg-gradient-to-r from-slate-200 to-brand-200 md:h-2;
+}
+
+.sv-panel-slider-input::-webkit-slider-thumb {
+    @apply w-6 h-6 rounded-full bg-brand-600 shadow-md border-2 border-white md:w-5 md:h-5;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    margin-top: -8px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+@media (min-width: 640px) {
+    .sv-panel-slider-input::-webkit-slider-thumb {
+        margin-top: -6px;
+    }
+}
+
+.sv-panel-slider-input::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 4px rgba(51, 153, 102, 0.2);
+}
+
+.sv-panel-slider-input::-moz-range-track {
+    @apply h-3 rounded-full bg-gradient-to-r from-slate-200 to-brand-200 md:h-2;
+}
+
+.sv-panel-slider-input::-moz-range-thumb {
+    @apply w-6 h-6 rounded-full bg-brand-600 shadow-md border-2 border-white md:w-5 md:h-5;
+    cursor: pointer;
+}
+
+.sv-panel-slider-value {
+    @apply text-xs font-bold text-slate-700 tabular-nums self-end md:text-[11px];
+}
+
+/* ── Modal ────────────────────────────────────────────────────────── */
+
+.sv-modal-overlay {
+    @apply fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4;
+}
+
+.sv-modal {
+    @apply w-full max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl sm:max-w-4xl flex flex-col;
+}
+
+.sv-modal-header {
+    @apply flex items-center justify-between px-4 py-3 border-b border-slate-100 sm:px-5 sm:py-3.5;
+}
+
+.sv-modal-title {
+    @apply text-sm font-semibold text-slate-900;
+}
+
+.sv-modal-close {
+    @apply text-slate-400 hover:text-slate-700 text-sm transition-colors px-2 py-1;
+}
+
+.sv-modal-video {
+    @apply bg-black flex-1 min-h-0;
+}
+
+.sv-modal-video-player {
+    @apply w-full max-h-[50vh] sm:max-h-[60vh];
+}
+
+.sv-modal-footer {
+    @apply flex items-center justify-end gap-2 px-4 py-3 border-t border-slate-100 sm:px-5 sm:py-3.5;
+}
+
+.sv-modal-btn {
+    @apply inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition sm:px-3 sm:py-2 sm:text-xs;
+}
+
+.sv-modal-btn--primary {
+    @apply bg-brand-600 text-white hover:bg-brand-700;
+}
+
+.sv-modal-btn--secondary {
+    @apply border border-slate-200 bg-white text-slate-700 hover:bg-slate-50;
+}
+
+/* ── Drop Zone ────────────────────────────────────────────────────── */
+
+.sv-drop-zone {
+    @apply relative border-2 border-dashed border-slate-300 rounded-xl p-6 text-center transition-all duration-200 bg-slate-50/60 cursor-pointer;
+}
+
+.sv-drop-zone:hover {
+    @apply border-brand-400 bg-brand-50/40;
+}
+
+.sv-drop-zone.drag-over {
+    @apply border-brand-500 bg-brand-50/60;
+}
+
+.sv-drop-zone.has-image {
+    @apply border-solid border-slate-200 p-2 bg-white cursor-default;
+}
+
+/* ── Image Preview ────────────────────────────────────────────────── */
+
+.sv-image-preview {
+    @apply relative rounded-lg overflow-hidden border border-slate-200 bg-white;
+}
+
+.sv-image-thumbnail {
+    @apply relative rounded-lg overflow-hidden bg-slate-100;
+    aspect-ratio: 4 / 3;
+}
+
+.sv-image-thumbnail img {
+    @apply w-full h-full object-cover;
+}
+
+.sv-remove-btn {
+    @apply absolute top-2 right-2 w-9 h-9 bg-black/50 text-white rounded-full flex items-center justify-center text-base leading-none z-20 transition-colors duration-150 hover:bg-black/70;
+}
+
+/* ── Opening Selector ─────────────────────────────────────────────── */
+
+.opening-selector {
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden;
+}
+
+.opening-selector-toolbar {
+    @apply flex flex-col gap-2 px-3 py-2.5 border-b border-slate-100 bg-slate-50/80 sm:flex-row sm:flex-wrap sm:items-center;
+}
+
+.opening-selector-hint {
+    @apply text-xs text-slate-500 px-3 py-2 bg-slate-50/60 border-b border-slate-100 sm:px-4;
+}
+
+.opening-selector-hint.sv-hint-secondary {
+    @apply text-slate-400;
+}
+
+.opening-selector-canvas-wrap {
+    @apply relative bg-slate-100 overflow-hidden;
+}
+
+.opening-selector-canvas {
+    @apply block w-full;
+    touch-action: none;
+}
+
+/* ── Tool Buttons ─────────────────────────────────────────────────── */
+
+.sv-tool-group {
+    @apply flex items-center gap-1.5;
+}
+
+.sv-btn {
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold border transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px] sm:min-h-[36px] sm:py-1.5;
+}
+
+.sv-btn-icon {
+    @apply text-sm leading-none;
+}
+
+.sv-btn-label {
+    @apply inline;
+}
+
+.sv-btn-split {
+    @apply border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:border-amber-400;
+}
+
+.sv-btn-split.sv-btn-remove {
+    @apply border-amber-200 bg-white text-amber-600 hover:bg-amber-50 hover:border-amber-300;
+}
+
+.sv-btn-beam {
+    @apply border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-400;
+}
+
+.sv-btn-beam.sv-btn-remove {
+    @apply border-red-200 bg-white text-red-600 hover:bg-red-50 hover:border-red-300;
+}
+
+.sv-btn-reset {
+    @apply border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300;
+}
+
+/* ── Spinner ──────────────────────────────────────────────────────── */
+
+@keyframes sv-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.sv-spinner {
+    @apply w-4 h-4 rounded-full border-2 border-slate-200 border-t-brand-600;
+    animation: sv-spin 0.8s linear infinite;
+}
+
+/* ── Range Slider (generic) ───────────────────────────────────────── */
+
+input[type='range'] {
+    @apply w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer;
+    -webkit-appearance: none;
+}
+
+input[type='range']::-webkit-slider-thumb {
+    @apply w-5 h-5 bg-brand-600 rounded-full shadow-sm;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type='range']::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 4px rgba(51, 153, 102, 0.15);
+}
+
+input[type='range']::-moz-range-thumb {
+    @apply w-5 h-5 bg-brand-600 rounded-full shadow-sm border-0;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type='range']::-moz-range-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 4px rgba(51, 153, 102, 0.15);
+}
+
+/* ── Skeleton Loader ──────────────────────────────────────────────── */
+
+@keyframes sv-shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.sv-skeleton {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: sv-shimmer 1.5s infinite;
+}
+
+/* ── Very small screens (≤374px) ──────────────────────────────────── */
+
+@media (max-width: 374px) {
+    .sv-tab {
+        @apply text-xs px-2.5 py-2.5;
+    }
+
+    .sv-tab svg {
+        @apply w-3.5 h-3.5;
+    }
+
+    .opening-selector-canvas-wrap {
+        @apply rounded-none;
+    }
+}

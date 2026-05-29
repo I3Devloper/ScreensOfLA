@@ -1,0 +1,45 @@
+import { useState, useCallback } from '@wordpress/element';
+
+const revokeIfBlob = ( url ) => {
+	if ( url && url.startsWith( 'blob:' ) ) {
+		URL.revokeObjectURL( url );
+	}
+};
+
+export function useViewState() {
+	const [ state, setState ] = useState( {
+		image: null,
+		result: null,
+		isGenerating: false,
+		error: null,
+		corners: [],
+		dividers: [],
+		beams: [],
+		retractLevels: [],
+		workingUrl: null,
+	} );
+
+	const update = useCallback( ( updates ) => {
+		setState( ( prev ) => ( { ...prev, ...updates } ) );
+	}, [] );
+
+	const reset = useCallback( () => {
+		setState( ( prev ) => {
+			revokeIfBlob( prev.image?.url );
+			revokeIfBlob( prev.workingUrl );
+			return {
+				image: null,
+				result: null,
+				isGenerating: false,
+				error: null,
+				corners: [],
+				dividers: [],
+				beams: [],
+				retractLevels: [],
+				workingUrl: null,
+			};
+		} );
+	}, [] );
+
+	return { state, update, reset };
+}

@@ -1,0 +1,35 @@
+{
+	"name": "screen-visualizer",
+	"version": "1.0.0",
+	"description": "A patio screen mockup generator for WordPress",
+	"author": "Screens of LA",
+	"license": "GPL-2.0-or-later",
+	"keywords": [
+		"wordpress",
+		"plugin",
+		"react",
+		"screen-visualizer"
+	],
+	"homepage": "https://screensofla.com",
+	"scripts": {
+		"start": "wp-scripts start",
+		"build": "wp-scripts build",
+		"build:verbose": "wp-scripts build --stats=verbose",
+		"test:web": "node ./test-server.mjs",
+		"test:web:debug": "set DEBUG=1&& node ./test-server.mjs",
+		"format": "wp-scripts format",
+		"lint:js": "wp-scripts lint-js",
+		"lint:css": "wp-scripts lint-style"
+	},
+	"dependencies": {
+		"@wordpress/element": "^6.0.0",
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1"
+	},
+	"devDependencies": {
+		"@wordpress/scripts": "^27.4.0",
+		"autoprefixer": "^10.4.19",
+		"postcss": "^8.4.38",
+		"tailwindcss": "^3.4.3"
+	}
+}

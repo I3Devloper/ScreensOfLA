@@ -1,0 +1,10 @@
+{
+    "presets": [
+        [
+            "@wordpress/babel-preset-default",
+            {
+                "modules": false
+            }
+        ]
+    ]
+}
