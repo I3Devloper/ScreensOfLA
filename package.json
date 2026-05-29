@@ -1,7 +1,7 @@
 {
 	"name": "screen-visualizer",
 	"version": "1.0.0",
-	"description": "An AI-powered patio screen mockup generator for WordPress",
+	"description": "A patio screen mockup generator for WordPress",
 	"author": "Screens of LA",
 	"license": "GPL-2.0-or-later",
 	"keywords": [

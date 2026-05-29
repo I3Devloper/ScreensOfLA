@@ -1,14 +1,15 @@
 # Screen Visualizer WordPress Plugin
 
-An AI-powered WordPress plugin that lets homeowners capture or upload patio photos, then generate realistic screen mockups for exterior and interior views.
+A WordPress plugin that lets homeowners capture or upload patio photos, mark their opening, and preview realistic motorized-screen mockups for exterior and interior views. Rendering is deterministic and runs entirely in the browser — no AI or network calls.
 
 ## Features
 
 - **Camera Capture**: Take a patio photo directly from a device camera
 - **Drag & Drop Upload**: Easily upload patio photos
-- **Screen Color Prompt**: Enter the desired screen color and send it into the generation prompt
-- **Opening-Aware Generation**: Uses a vision prepass plus prompt rules to better isolate the main patio opening
-- **Door-Safe Prompting**: Keeps nearby doors and door frames untouched
+- **Opening Selector**: Drag corner pins to match the patio opening, with optional splits and structural beams for multi-panel screens
+- **Screen Color**: Pick a preset frame color or enter a custom value
+- **Retract Control**: Per-panel sliders to preview the screen open/closed
+- **Video Export**: Record a short animation of the screen retracting
 - **Responsive Design**: Mobile-friendly "Bento-box" UI
 - **WordPress Integration**: Simple shortcode `[screen_visualizer]`
 
@@ -68,10 +69,8 @@ http://127.0.0.1:4173/test.html
 ```
 
 - Uses local React/ReactDOM files from `node_modules`
-- Serves the page over HTTP so browser fetches work like a real webpage
-- Proxies AI requests server-side through the same OpenRouter flow
-- Set `SCREEN_VISUALIZER_OPENROUTER_API_KEY` in your shell before starting the server
-- Useful for testing uploads, camera capture, prompt behavior, and result rendering without WordPress
+- Serves the page over HTTP so browser APIs work like a real webpage
+- Useful for testing uploads, camera capture, opening selection, and rendering without WordPress
 
 ### Lint Code
 
@@ -99,8 +98,7 @@ npm run format
 
 - **Frontend**: React 18
 - **Styling**: Tailwind CSS
-- **AI Generation**: OpenRouter image generation with prompt steering
-- **AI Detection**: OpenRouter vision prepass for patio-opening hints
+- **Rendering**: Deterministic HTML canvas overlay (no AI, no network)
 - **Build**: @wordpress/scripts with Webpack
 
 ## Project Structure
@@ -115,9 +113,15 @@ screen-visualizer/
 │   ├── index.js             # React entry point
 │   ├── App.jsx              # Main app component
 │   ├── components/
-│   │   ├── ImageUploader.jsx
-│   │   ├── VisualizerCanvas.jsx  # Legacy canvas visualizer
-│   │   └── ControlPanel.jsx      # Legacy canvas controls
+│   │   ├── ImageUploader.jsx     # Upload + camera capture
+│   │   └── OpeningSelector.jsx   # Corner-pin / split / beam editor
+│   ├── hooks/
+│   │   └── useViewState.js
+│   ├── utils/
+│   │   ├── screenRenderer.js     # Canvas overlay renderer
+│   │   ├── imageUtils.js         # Resize + composite helpers
+│   │   ├── imageCompositor.js    # Watermark stamping
+│   │   └── videoExporter.js      # Retract animation recorder
 │   └── styles/
 │       └── app.scss         # Main styles
 └── assets/build/            # Compiled output (generated)

@@ -47,26 +47,26 @@ export const drawWatermark = ( ctx, width, height, logoImg ) => {
 };
 
 /**
- * Adds watermark to an image.
+ * Adds the brand watermark to an image.
  *
- * @param {string} aiUrl - Image URL
- * @return {Promise<string>} - Data URL with watermark
+ * @param {string} imageUrl - Source image URL
+ * @return {Promise<string>} - JPEG data URL with watermark
  */
-export const addWatermark = async ( aiUrl ) => {
-	const [ aiImg, logoImg ] = await Promise.all( [
-		loadImage( aiUrl ),
+export const addWatermark = async ( imageUrl ) => {
+	const [ baseImg, logoImg ] = await Promise.all( [
+		loadImage( imageUrl ),
 		getLogo(),
 	] );
-	const width = aiImg.naturalWidth;
-	const height = aiImg.naturalHeight;
+	const width = baseImg.naturalWidth;
+	const height = baseImg.naturalHeight;
 
 	const canvas = document.createElement( 'canvas' );
 	canvas.width = width;
 	canvas.height = height;
 	const ctx = canvas.getContext( '2d' );
 
-	ctx.drawImage( aiImg, 0, 0, width, height );
+	ctx.drawImage( baseImg, 0, 0, width, height );
 	drawWatermark( ctx, width, height, logoImg );
 
-	return canvas.toDataURL( 'image/png' );
+	return canvas.toDataURL( 'image/jpeg', 0.92 );
 };

@@ -3,11 +3,10 @@ node_modules/
 
 # Build output
 assets/build/
+stats.json
 
-# WordPress specific
+# Logs
 *.log
-.DS_Store
-Thumbs.db
 
 # IDE
 .vscode/

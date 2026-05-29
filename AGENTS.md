@@ -24,7 +24,6 @@ WordPress plugin (React 18 + Tailwind) that deterministically renders patio-scre
 - **Webpack aliases**: `@components`, `@hooks`, `@utils`, `@styles` → `src/{components,hooks,utils,styles}`.
 - **Babel**: `@wordpress/babel-preset-default` via `babel-loader` in `webpack.config.js`.
 - **Tailwind content**: `./src/**/*.{js,jsx,ts,tsx}` and `./src/styles/**/*.{css,scss}`.
-- **Legacy components**: `VisualizerCanvas.jsx` and `ControlPanel.jsx` exist in `src/components/` but are unused by the current `App.jsx`.
 
 ## Key files
 

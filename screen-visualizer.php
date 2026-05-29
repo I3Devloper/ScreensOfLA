@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Screen Visualizer
  * Plugin URI:  https://screensofla.com
- * Description: An AI-powered WordPress plugin that lets homeowners capture or upload patio photos and generate realistic screen mockups. Use shortcode [screen_visualizer] to display.
+ * Description: A WordPress plugin that lets homeowners capture or upload patio photos and preview custom motorized screen mockups. Use shortcode [screen_visualizer] to display.
  * Version:     1.0.0
  * Author:      Screens of LA
  * Author URI:  https://screensofla.com

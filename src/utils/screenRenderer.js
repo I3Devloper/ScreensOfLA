@@ -1,13 +1,7 @@
 /**
  * Screen Renderer Utility
- * Deterministically renders a photorealistic screen overlay onto a canvas.
+ * Deterministically renders a screen overlay onto a canvas.
  * Supports multi-panel screens via dividers and beams.
- *
- * Frame bar proportions (real retractable screen ratios):
- *   - Top Cassette:  thickest  (~20-24px at 1024px)  — houses the motor/roller
- *   - Bottom Rail:   medium    (~12-14px)             — weighted bar
- *   - Side Tracks:   slimmest  (~8-10px)              — guide channels
- *   - Center Posts:  slightly thicker than tracks      — shared divider posts
  */
 
 const hexToRgba = ( hex, alpha ) => {
@@ -97,7 +91,6 @@ const lerp = ( p1, p2, t ) => ( {
 	y: p1.y + ( p2.y - p1.y ) * t,
 } );
 
-// ─── Frame bar rendering ────────────────────────────────────────────
 
 /** Draws a 3D metallic bar along a line segment. */
 const drawEdgeBar = ( ctx, x1, y1, x2, y2, thickness, baseColor ) => {
@@ -342,7 +335,6 @@ const drawPillar = ( ctx, x1, y1, x2, y2, thickness, baseColor ) => {
 	ctx.restore();
 };
 
-// ─── Main export ────────────────────────────────────────────────────
 
 /** Renders a screen overlay with multi-panel splits and beams. */
 export const renderScreenOverlay = ( {
@@ -404,7 +396,6 @@ export const renderScreenOverlay = ( {
 		return Math.max( 0, Math.min( 1, retractLevels[ idx ] ?? 1 ) );
 	};
 
-	// ── 1. Draw fabric for each panel ─────────────────────────────────
 
 	let panelIdx = 0;
 	for ( let i = 0; i < allBoundaries.length - 1; i++ ) {
@@ -442,7 +433,6 @@ export const renderScreenOverlay = ( {
 		panelIdx++;
 	}
 
-	// ── 2. Draw frame bars ────────────────────────────────────────────
 
 	const FRAME_COLOR = '#2a2a2a';
 	const sizeMultiplier = isInside ? 0.8 : 1.0;

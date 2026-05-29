@@ -1,12 +1,27 @@
-/**
- * Video Exporter
- * Records a 60fps WebM video of the screen retracting/extending.
- * Returns a blob URL for in-browser preview playback.
- */
 import { renderScreenOverlay } from './screenRenderer';
 import { loadImage, getLogo, drawWatermark } from './imageCompositor';
 
 const FPS = 60;
+
+const VIDEO_MIME_CANDIDATES = [
+	'video/mp4;codecs=avc1.42E01E',
+	'video/mp4;codecs=avc1',
+	'video/mp4',
+	'video/webm;codecs=vp9',
+	'video/webm',
+];
+
+const pickVideoMime = () => {
+	for ( const type of VIDEO_MIME_CANDIDATES ) {
+		if ( window.MediaRecorder.isTypeSupported( type ) ) {
+			return type;
+		}
+	}
+	return 'video/webm';
+};
+
+const extensionForMime = ( mime ) =>
+	mime.startsWith( 'video/mp4' ) ? 'mp4' : 'webm';
 const FRAME_INTERVAL = 1000 / FPS;
 const HOLD_TIME = 0.5;
 const ANIMATE_TIME = 2.0;
@@ -121,11 +136,7 @@ export const exportVideo = async ( params ) => {
 	const overlayCanvas = document.createElement( 'canvas' );
 
 	const stream = recordCanvas.captureStream( FPS );
-	const mimeType = window.MediaRecorder.isTypeSupported(
-		'video/webm;codecs=vp9'
-	)
-		? 'video/webm;codecs=vp9'
-		: 'video/webm';
+	const mimeType = pickVideoMime();
 	const recorder = new window.MediaRecorder( stream, { mimeType } );
 	const chunks = [];
 
@@ -137,8 +148,12 @@ export const exportVideo = async ( params ) => {
 
 	const recordingPromise = new Promise( ( resolve ) => {
 		recorder.onstop = () => {
-			const blob = new Blob( chunks, { type: 'video/webm' } );
-			resolve( { blob, url: URL.createObjectURL( blob ) } );
+			const blob = new Blob( chunks, { type: mimeType } );
+			resolve( {
+				blob,
+				url: URL.createObjectURL( blob ),
+				extension: extensionForMime( mimeType ),
+			} );
 		};
 	} );
 

@@ -1,6 +1,5 @@
 /**
  * Screen Visualizer - Main App Component
- * Deterministic Canvas Render — no AI. Pixel-perfect screen placement.
  */
 import { useState, useCallback, useRef } from '@wordpress/element';
 import ImageUploader from './components/ImageUploader';
@@ -340,7 +339,9 @@ function App() {
 					onProgress: ( p ) => setRecordingProgress( p ),
 				} );
 				setVideoPreviewUrl( result.url );
-				setVideoPreviewFilename( `${ viewType }-screen-video.mp4` );
+				setVideoPreviewFilename(
+					`${ viewType }-screen-video.${ result.extension }`
+				);
 				setPreviewTab( 'video' );
 			} catch ( err ) {
 				console.error( 'Video export failed:', err );
@@ -1053,7 +1054,7 @@ function App() {
 											onClick={ () =>
 												downloadImage(
 													activeResult,
-													`${ activeView }-mockup.png`
+													`${ activeView }-mockup.jpg`
 												)
 											}
 											className="sv-action-btn sv-action-btn--primary"
